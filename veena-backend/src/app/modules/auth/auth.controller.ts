@@ -1,0 +1,860 @@
+import { Request, Response } from "express";
+import { User } from "./auth.model";
+import { RequestHandler } from 'express';
+import { activateUserValidation, authValidation, emailCheckValidation, loginValidation, phoneCheckValidation, requestOtpValidation, resetPasswordValidation, updateUserValidation, verifyOtpValidation, changePasswordValidation, updateProfileValidation, requestResetEmailValidation, confirmResetEmailValidation } from "./auth.validation";
+import { generateToken } from "../../config/generateToken";
+import { sendMail } from '../../services/mailService';
+import { firebaseAuth } from '../../config/firebase';
+// import { AdminStaff } from "../admin-staff/admin-staff.model";
+
+export const singUpController: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { name, password, img, phone, email, role } = authValidation.parse(req.body);
+
+    // Check for existing email
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Email already exists",
+      });
+      return;
+    }
+    
+    
+    
+    
+    
+    
+
+    // Check for existing phone
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
+      res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Phone number already exists",
+      });
+      return;
+    }
+
+
+    const user = new User({ name, password, img, phone, email, role });
+    await user.save();
+
+    const { password: _, ...userObject } = user.toObject();
+
+    res.status(201).json({
+      success: true,
+      statusCode: 200,
+      message: "User registered successfully",
+      data: userObject,
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({ 
+      success: false, 
+      statusCode: 500, 
+      message: error.message 
+    });
+  }
+};
+
+// Request password reset via email (send OTP)
+export const requestResetPasswordEmail: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { email } = requestResetEmailValidation.parse(req.body)
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      res.status(404).json({ success: false, statusCode: 404, message: 'Email not found' })
+      return
+    }
+
+    const otp = generateOTP()
+    user.otp = otp
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000) // 10 min
+    await user.save()
+
+    // Send OTP email
+    await sendMail({
+      to: email,
+      subject: 'Password Reset Code',
+      html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
+  <h2 style="margin:0 0 12px">Reset your password</h2>
+  <p style="margin:0 0 16px">Use the following code to reset your password. This code expires in 10 minutes.</p>
+  <div style="font-size:32px;font-weight:700;letter-spacing:4px;background:#f5f5f5;padding:12px 16px;border-radius:8px;text-align:center">${otp}</div>
+  <p style="color:#666;margin-top:16px">If you did not request this, you can ignore this email.</p>
+</div>`
+    })
+
+    res.json({ success: true, statusCode: 200, message: 'Reset code sent to email' })
+    return
+  } catch (error: any) {
+    res.status(400).json({ success: false, statusCode: 400, message: error.message })
+    return
+  }
+}
+
+// Confirm email OTP and reset password
+export const confirmResetPasswordEmail: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { email, otp, newPassword } = confirmResetEmailValidation.parse(req.body)
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      res.status(404).json({ success: false, statusCode: 404, message: 'User not found' })
+      return
+    }
+
+    if (!user.compareOtp(otp)) {
+      res.status(401).json({ success: false, statusCode: 401, message: 'Invalid or expired OTP' })
+      return
+    }
+
+    user.password = newPassword
+    user.otp = undefined
+    user.otpExpires = undefined
+    await user.save()
+
+    res.json({ success: true, statusCode: 200, message: 'Password reset successfully' })
+    return
+  } catch (error: any) {
+    res.status(400).json({ success: false, statusCode: 400, message: error.message })
+    return
+  }
+}
+
+
+// Add these functions to your existing controller file
+
+// Utility function to generate OTP
+const generateOTP = (): string => {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+};
+
+// Request OTP handler
+export const requestOtp: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { phone } = requestOtpValidation.parse(req.body);
+
+    // Find or create user
+    let user = await User.findOne({ phone });
+    
+    if (!user) {
+      user = new User({
+        phone,
+        role: 'user',
+        status: 'active'
+      });
+    }
+
+    // Generate OTP and set expiration
+    const otp = generateOTP();
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "OTP sent successfully",
+      data: { 
+        otp,
+        phone 
+      }
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+  }
+};
+
+
+// Verify OTP and login
+export const verifyOtp: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { phone, otp } = verifyOtpValidation.parse(req.body);
+    
+    // Find user by phone
+    const user = await User.findOne({ phone });
+    
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found"
+      });
+      return;
+    }
+    
+    // Check if OTP is valid and not expired
+    if (!user.compareOtp(otp)) {
+      res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Invalid or expired OTP"
+      });
+      return;
+    }
+    
+    // Generate token for the user
+    const token = generateToken(user);
+    
+    // Clear OTP after successful verification
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+    
+    // Remove password from response
+    const { password: _, ...userObject } = user.toObject();
+    
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "OTP verified successfully",
+      token,
+      data: userObject
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+  }
+};
+
+
+export const updateUser: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    // Create a clean request body by filtering out undefined/null values
+    const cleanBody = Object.fromEntries(
+      Object.entries(req.body).filter(([_, v]) => v !== undefined && v !== null)
+    );
+    
+    // Validate the clean data
+    const validatedData = updateUserValidation.parse(cleanBody);
+    
+    // Check if email is being updated with a non-empty value and if it already exists
+    if (validatedData.email && validatedData.email.length > 0) {
+      const existingUser = await User.findOne({
+        email: validatedData.email,
+        _id: { $ne: req.params.id }
+      });
+      
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          statusCode: 400,
+          message: "Email already exists"
+        });
+        return;
+      }
+    }
+    
+    // If email is empty string, remove it from update data
+    if (validatedData.email === '') {
+      delete validatedData.email;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      validatedData,
+      { new: true, select: '-password' }
+    );
+
+    if (!updatedUser) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found"
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "User updated successfully",
+      data: updatedUser
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+  }
+};
+
+
+export const loginController: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { email, password } = loginValidation.parse(req.body);
+
+    // First try to find in User model
+    let user = await User.findOne({ email });
+    let userType = 'user';
+    
+    // If not found in User model, try AdminStaff model
+    // if (!user) {
+    //   user = await AdminStaff.findOne({ email });
+    //   userType = 'admin-staff';
+    // }
+    
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        statusCode: 400,
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      res.status(401).json({
+        success: false,
+        statusCode: 400,
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+
+
+    const token = generateToken(user);
+
+    // remove password
+    const { password: _, ...userObject } = user.toObject();
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "User logged in successfully",
+      token,
+      data: userObject,
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({ 
+      success: false, 
+      statusCode: 400, 
+      message: error.message 
+    });
+    return;
+  }
+};
+
+export const getAllUsers: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const users = await User.find({}, { password: 0 });
+    
+    if (users.length === 0) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "No users found",
+      });
+      return;
+    }
+    
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Users retrieved successfully",
+      data: users,
+    });
+    return;
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      statusCode: 500, 
+      message: error.message 
+    });
+    return;
+  }
+};
+
+export const getUserById: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const user = await User.findById(req.params.id, { password: 0 });
+    
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found",
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "User retrieved successfully",
+      data: user,
+    });
+    return;
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      statusCode: 500, 
+      message: error.message 
+    });
+    return;
+  }
+};
+
+export const resetPassword: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { phone, newPassword } = resetPasswordValidation.parse(req.body);
+    
+    const user = await User.findOne({ phone });
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found"
+      });
+      return;
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Password reset successfully"
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+    return;
+  }
+};
+
+export const activateUser: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { phone } = activateUserValidation.parse(req.body);
+    
+    const user = await User.findOne({ phone });
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found"
+      });
+      return;
+    }
+
+    (user as any).status = 'active';
+    await user.save();
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "User activated successfully"
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+    return;
+  }
+};
+
+export const checkPhoneExists: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { phone } = phoneCheckValidation.parse(req.body);
+    
+    const user = await User.findOne({ phone });
+    
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "Phone number not found"
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Phone number exists",
+      data: {
+        exists: true,
+        phone: user.phone
+      }
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+    return;
+  }
+};
+
+export const checkEmailExists: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { email } = emailCheckValidation.parse(req.body);
+    
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "Email not found"
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Email exists",
+      data: {
+        exists: true,
+        email: user.email
+      }
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+    return;
+  }
+};
+
+// Get current user profile
+export const getMyProfile: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized"
+      });
+      return;
+    }
+
+    const user = await User.findById(userId, { password: 0, otp: 0, otpExpires: 0 });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found"
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Profile retrieved successfully",
+      data: user
+    });
+    return;
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: error.message
+    });
+    return;
+  }
+};
+
+// Update current user profile
+export const updateMyProfile: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized"
+      });
+      return;
+    }
+
+    const cleanBody = Object.fromEntries(
+      Object.entries(req.body).filter(([_, v]) => v !== undefined && v !== null)
+    );
+
+    const validatedData = updateProfileValidation.parse(cleanBody);
+
+    // Check if email is being updated and if it already exists
+    if (validatedData.email && validatedData.email.length > 0) {
+      const existingUser = await User.findOne({
+        email: validatedData.email,
+        _id: { $ne: userId }
+      });
+
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          statusCode: 400,
+          message: "Email already exists"
+        });
+        return;
+      }
+    }
+
+    // Check if phone is being updated and if it already exists
+    if (validatedData.phone) {
+      const existingUser = await User.findOne({
+        phone: validatedData.phone,
+        _id: { $ne: userId }
+      });
+
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          statusCode: 400,
+          message: "Phone number already exists"
+        });
+        return;
+      }
+    }
+
+    // Remove empty email
+    if (validatedData.email === '') {
+      delete validatedData.email;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      validatedData,
+      { new: true, select: '-password -otp -otpExpires' }
+    );
+
+    if (!updatedUser) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found"
+      });
+      return;
+    }
+
+    // Generate new token with updated user data
+    const token = generateToken(updatedUser);
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Profile updated successfully",
+      token,
+      data: updatedUser
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+    return;
+  }
+};
+
+// Change password
+export const changePassword: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized"
+      });
+      return;
+    }
+
+    const { currentPassword, newPassword } = changePasswordValidation.parse(req.body);
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "User not found"
+      });
+      return;
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Current password is incorrect"
+      });
+      return;
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Password changed successfully"
+    });
+    return;
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: error.message
+    });
+    return;
+  }
+};
+
+// Google Sign-In with Firebase
+export const googleSignIn: RequestHandler = async (req, res, next): Promise<void> => {
+  try {
+    const { idToken, phone } = req.body;
+
+    if (!idToken) {
+      res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "ID token is required"
+      });
+      return;
+    }
+
+    // Verify the Firebase ID token
+    let decodedToken;
+    try {
+      decodedToken = await firebaseAuth.verifyIdToken(idToken);
+    } catch (error) {
+      console.error('Firebase token verification failed:', error);
+      res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Invalid Firebase token"
+      });
+      return;
+    }
+
+    const { uid, email, name, picture } = decodedToken;
+
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Email not found in Google account"
+      });
+      return;
+    }
+
+    // Check if user exists by Google ID or email
+    let user = await User.findOne({
+      $or: [
+        { googleId: uid },
+        { email: email }
+      ]
+    });
+
+    if (user) {
+      // Existing user - update Google ID if not set
+      if (!user.googleId) {
+        user.googleId = uid;
+        user.authProvider = 'google';
+        if (picture && !user.img) {
+          user.img = picture;
+        }
+        // Update phone if provided
+        if (phone && !user.phone) {
+          user.phone = phone;
+        }
+        await user.save();
+      }
+    } else {
+      // New user - create account (phone is optional for Google users)
+      user = new User({
+        name: name || email.split('@')[0],
+        email: email,
+        phone: phone || undefined, // Optional for Google Sign-In
+        googleId: uid,
+        authProvider: 'google',
+        img: picture || '',
+        role: 'user',
+        status: 'active',
+        // No password needed for Google sign-in
+        password: Math.random().toString(36).slice(-8), // Random password (won't be used)
+      });
+
+      await user.save();
+      console.log(`✅ New Google user created: ${email} (phone: ${phone || 'not provided'})`);
+    }
+
+    // Generate JWT token
+    const token = generateToken({
+      _id: (user._id as any).toString(),
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      phone: user.phone,
+    } as any);
+
+    // Remove password from response
+    const { password: _, ...userObject } = user.toObject();
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Google sign-in successful",
+      data: {
+        user: userObject,
+        token,
+      },
+    });
+    return;
+  } catch (error: any) {
+    console.error('Google Sign-In Error:', error);
+    res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: error.message || "Google sign-in failed"
+    });
+    return;
+  }
+};
