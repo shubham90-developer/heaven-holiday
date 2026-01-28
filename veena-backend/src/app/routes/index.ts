@@ -82,6 +82,7 @@ import { applnProcessRouter } from '../modules/applProcess/applProcessRoutes';
 import { becomePartnerRouter } from '../modules/salesPartner/partnerRoutes';
 import { becomePartnerFormRouter } from '../modules/becomePartnerForm/formRoutes';
 import { commentRouter } from '../modules/comments/commentRoutes';
+import { IncludedRouter } from '../modules/toursIncluded/toursIncludedRoutes';
 const router = Router();
 const moduleRoutes = [
   {
@@ -436,6 +437,10 @@ const moduleRoutes = [
   {
     path: '/comment',
     route: commentRouter,
+  },
+  {
+    path: '/includes',
+    route: IncludedRouter,
   },
 ];
 

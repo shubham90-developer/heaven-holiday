@@ -265,14 +265,6 @@ const JobOpeningsPage = () => {
         status: jobStatus,
       };
 
-      console.log("=== FRONTEND DEBUG ===");
-      console.log("Sending job data:", jobData);
-      console.log("jobDescription value:", jobDescription);
-      console.log("jobDescription length:", jobDescription.length);
-      console.log("Text content (stripped):", textContent);
-      console.log("Text content length:", textContent.length);
-      console.log("=====================");
-
       if (isEditMode && jobId) {
         await updateJobItem({ jobId, data: jobData }).unwrap();
         showAlert("Job updated successfully!", "success");

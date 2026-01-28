@@ -1,111 +1,164 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  useGetTourPackageQuery,
-  useUpdateTitleSubtitleMutation,
-  useAddPackageCardMutation,
-  useUpdatePackageCardMutation,
-  useDeletePackageCardMutation,
-} from "@/app/redux/api/tourManager/tourPackageApi";
-
 import ComponentContainerCard from "@/components/ComponentContainerCard";
-import { Row, Col, Alert, Form, Button, Modal, Card } from "react-bootstrap";
-import PageTitle from "@/components/PageTitle";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
+import {
+  Button,
+  Modal,
+  Form,
+  Row,
+  Col,
+  Alert,
+  Tabs,
+  Tab,
+  Card,
+} from "react-bootstrap";
+
+import PageTitle from "@/components/PageTitle";
+import { useState } from "react";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 import { FileUploader } from "@/components/FileUploader";
 import Link from "next/link";
-import ReactQuill from "react-quill-new";
+import {
+  useGetCategoriesQuery,
+  useCreateCategoryMutation,
+  useUpdateCategoryMutation,
+  useDeleteCategoryMutation,
+  useGetTourPackageCardsQuery,
+  useCreateTourPackageCardMutation,
+  useUpdateTourPackageCardMutation,
+  useDeleteTourPackageCardMutation,
+  useBulkAddDeparturesMutation,
+  useBulkUpdateDepartureStatusMutation,
+} from "@/app/redux/api/tourManager/tourPackageApi";
+import { useGetAllIncludesQuery } from "@/app/redux/api/tourManager/includes";
 
-// styles
-import "react-quill-new/dist/quill.snow.css";
+import {
+  ModalType,
+  AlertType,
+  State,
+  CityDetail,
+  Departure,
+  TourIncludes,
+  ItineraryItem,
+} from "./types";
+import { CATEGORY_TYPES, STATUS_OPTIONS, modules } from "./constant";
+import CategorySection from "./CategorySection";
+import TourCardSection from "./TourCardSection";
+import BasicInfoTab from "./TourCardModalTabs/BasicInfoTab";
+import LocationTab from "./TourCardModalTabs/LocationTab";
+import PricingTab from "./TourCardModalTabs/PricingTab";
+import DeparturesTab from "./TourCardModalTabs/DeparturesTab";
+import ItineraryTab from "./TourCardModalTabs/ItineraryTab";
+import IncludesTab from "./TourCardModalTabs/IncludesTab";
+import GalleryTab from "./TourCardModalTabs/GalleryTab";
 
-type ModalType = "create" | "edit" | "titleSubtitle" | null;
-type AlertType = {
-  show: boolean;
-  message: string;
-  variant: "success" | "danger" | "warning" | "info";
-};
+const TourPackagePage = () => {
+  const {
+    data: includes,
+    isLoading: includesLoading,
+    error,
+  } = useGetAllIncludesQuery(undefined);
 
-const TourPackagePage: React.FC = () => {
-  const { data: tourPackageData, isLoading } =
-    useGetTourPackageQuery(undefined);
-  const [updateTitleSubtitle, { isLoading: isUpdatingTitle }] =
-    useUpdateTitleSubtitleMutation();
-  const [addPackageCard, { isLoading: isCreating }] =
-    useAddPackageCardMutation();
-  const [updatePackageCard, { isLoading: isUpdating }] =
-    useUpdatePackageCardMutation();
-  const [deletePackageCard] = useDeletePackageCardMutation();
+  // --- Data fetching & mutations ---
+  const { data: categoriesData, isLoading: isCategoriesLoading } =
+    useGetCategoriesQuery({ page: 1, limit: 100 });
+  const { data: tourCardsData, isLoading: isTourCardsLoading } =
+    useGetTourPackageCardsQuery({ page: 1, limit: 100 });
 
-  const packages = tourPackageData?.data?.packages || [];
-  const currentTitle = tourPackageData?.data?.title || "";
-  const currentSubtitle = tourPackageData?.data?.subtitle || "";
+  const [createCategory] = useCreateCategoryMutation();
+  const [updateCategory] = useUpdateCategoryMutation();
+  const [deleteCategory] = useDeleteCategoryMutation();
 
-  // Modal state
+  const [createTourCard] = useCreateTourPackageCardMutation();
+  const [updateTourCard] = useUpdateTourPackageCardMutation();
+  const [deleteTourCard] = useDeleteTourPackageCardMutation();
+
+  // NEW: Departure mutations
+  const [bulkAddDepartures] = useBulkAddDeparturesMutation();
+  const [bulkUpdateDepartureStatus] = useBulkUpdateDepartureStatusMutation();
+
+  const categories = categoriesData?.data || [];
+  const tourCards = tourCardsData?.data || [];
+  const includesData = includes?.data || [];
+
+  // --- State ---
+  const [activeTab, setActiveTab] = useState("categories");
   const [modalType, setModalType] = useState<ModalType>(null);
-  const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
-  // Form state for package cards
-  const [formData, setFormData] = useState({
-    city: "",
-    tours: 0,
-    departures: 0,
-    price: "",
-    badge: "",
-    status: "Active",
-    order: 0,
-    link: "/tour-details",
-    cities: [] as string[],
-    days: 1,
-    startOn: "",
-    joinPrice: "",
-  });
+  // Category state
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState("");
+  const [categoryTitle, setCategoryTitle] = useState("");
+  const [categoryDescription, setCategoryDescription] = useState("");
+  const [categoryGuests, setCategoryGuests] = useState("");
+  const [categoryIcon, setCategoryIcon] = useState("");
+  const [categoryBadge, setCategoryBadge] = useState("");
+  const [categoryType, setCategoryType] = useState("world");
+  const [categoryStatus, setCategoryStatus] = useState("Active");
+  const [categoryImageFile, setCategoryImageFile] = useState<File | null>(null);
+  const [categoryImagePreview, setCategoryImagePreview] = useState("");
 
-  // Form state for title/subtitle
-  const [titleSubtitleData, setTitleSubtitleData] = useState({
-    title: "",
-    subtitle: "",
-  });
+  // Tour Card state
+  const [tourCardId, setTourCardId] = useState<string | null>(null);
+  const [tourTitle, setTourTitle] = useState("");
+  const [tourSubtitle, setTourSubtitle] = useState("");
+  const [tourCategory, setTourCategory] = useState("");
+  const [tourBadge, setTourBadge] = useState("");
+  const [tourMetaDescription, setTourMetaDescription] = useState("");
+  const [tourFeatured, setTourFeatured] = useState(false);
+  const [tourStatus, setTourStatus] = useState("Active");
+  const [tourType, setTourType] = useState("Group Tour");
+  const [tourDays, setTourDays] = useState(1);
+  const [tourNights, setTourNights] = useState(0);
+  const [tourStates, setTourStates] = useState<State[]>([
+    { name: "", cities: [""] },
+  ]);
+  const [tourRoute, setTourRoute] = useState("");
+  const [tourCityDetails, setTourCityDetails] = useState<CityDetail[]>([
+    { name: "", nights: 0 },
+  ]);
 
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [cityInput, setCityInput] = useState("");
+  // NEW: Changed to base prices
+  const [tourBaseFullPackagePrice, setTourBaseFullPackagePrice] = useState(0);
+  const [tourBaseJoiningPrice, setTourBaseJoiningPrice] = useState(0);
+  const [tourPriceNote, setTourPriceNote] = useState("");
+
+  const [tourManagerIncluded, setTourManagerIncluded] = useState(false);
+  const [tourManagerNote, setTourManagerNote] = useState("");
+  const [tourWhyTravel, setTourWhyTravel] = useState<string[]>([""]);
+  const [tourIncludes, setTourIncludes] = useState<TourIncludes>([]);
+  const [tourGalleryFiles, setTourGalleryFiles] = useState<File[]>([]);
+  const [tourGalleryPreviews, setTourGalleryPreviews] = useState<string[]>([]);
+  const [currentTourCardTab, setCurrentTourCardTab] = useState("basic");
+
+  // NEW: Departure state
+  const [selectedTourForDepartures, setSelectedTourForDepartures] = useState<
+    string | null
+  >(null);
+  const [departures, setDepartures] = useState<Departure[]>([
+    {
+      city: "Mumbai",
+      date: "",
+      fullPackagePrice: 0,
+      joiningPrice: 0,
+      availableSeats: 40,
+      totalSeats: 40,
+    },
+  ]);
+  // NEW: Itinerary state
+  const [itinerary, setItinerary] = useState<ItineraryItem[]>([
+    { day: 1, date: "", title: "", activity: "" },
+  ]);
+  const [viewDeparturesTab, setViewDeparturesTab] = useState("add");
 
   const [alert, setAlert] = useState<AlertType>({
     show: false,
     message: "",
     variant: "success",
   });
-
-  // Quill editor modules
-  const modules = {
-    toolbar: [
-      [{ font: [] }, { size: [] }],
-      ["bold", "italic", "underline", "strike"],
-      [{ color: [] }, { background: [] }],
-      [{ script: "super" }, { script: "sub" }],
-      [{ header: [false, 1, 2, 3, 4, 5, 6] }, "blockquote", "code-block"],
-      [
-        { list: "ordered" },
-        { list: "bullet" },
-        { indent: "-1" },
-        { indent: "+1" },
-      ],
-      ["direction", { align: [] }],
-      ["link", "image", "video"],
-      ["clean"],
-    ],
-  };
-
-  useEffect(() => {
-    if (currentTitle || currentSubtitle) {
-      setTitleSubtitleData({
-        title: currentTitle,
-        subtitle: currentSubtitle,
-      });
-    }
-  }, [currentTitle, currentSubtitle]);
 
   const showAlert = (message: string, variant: AlertType["variant"]) => {
     setAlert({ show: true, message, variant });
@@ -116,218 +169,898 @@ const TourPackagePage: React.FC = () => {
 
   const handleCloseModal = () => {
     setModalType(null);
-    setEditingPackageId(null);
-    setFormData({
-      city: "",
-      tours: 0,
-      departures: 0,
-      price: "",
-      badge: "",
-      status: "Active",
-      order: 0,
-      link: "/tour-details",
-      cities: [],
-      days: 1,
-      startOn: "",
-      joinPrice: "",
-    });
-    setImageFile(null);
-    setImagePreview("");
-    setCityInput("");
+    setIsEditMode(false);
+    // Reset category state
+    setCategoryId(null);
+    setCategoryName("");
+    setCategoryTitle("");
+    setCategoryDescription("");
+    setCategoryGuests("");
+    setCategoryIcon("");
+    setCategoryBadge("");
+    setCategoryType("world");
+    setCategoryStatus("Active");
+    setCategoryImageFile(null);
+    setCategoryImagePreview("");
+
+    // Reset tour card state
+    setTourCardId(null);
+    setTourTitle("");
+    setTourSubtitle("");
+    setTourCategory("");
+    setTourBadge("");
+    setTourMetaDescription("");
+    setTourFeatured(false);
+    setTourStatus("Active");
+    setTourType("Group Tour");
+    setTourDays(1);
+    setTourNights(0);
+    setTourStates([{ name: "", cities: [""] }]);
+    setTourRoute("");
+    setTourCityDetails([{ name: "", nights: 0 }]);
+    setTourBaseFullPackagePrice(0);
+    setTourBaseJoiningPrice(0);
+    setTourPriceNote("");
+    setTourManagerIncluded(false);
+    setTourManagerNote("");
+    setTourWhyTravel([""]);
+    setTourIncludes([]);
+    setTourGalleryFiles([]);
+    setTourGalleryPreviews([]);
+    setCurrentTourCardTab("basic");
+
+    // NEW: Reset departure state
+    setSelectedTourForDepartures(null);
+    setDepartures([
+      {
+        city: "Mumbai",
+        date: "",
+        fullPackagePrice: 0,
+        joiningPrice: 0,
+        availableSeats: 40,
+        totalSeats: 40,
+      },
+    ]);
+    // NEW: Reset itinerary state
+    setItinerary([{ day: 1, date: "", title: "", activity: "" }]);
+    setViewDeparturesTab("add");
   };
 
-  const handleOpenCreateModal = () => {
-    handleCloseModal();
-    setModalType("create");
-  };
-
-  const handleOpenEditModal = (packageCard: any) => {
-    setFormData({
-      city: packageCard.city,
-      tours: packageCard.tours,
-      departures: packageCard.departures,
-      price: packageCard.price,
-      badge: packageCard.badge || "",
-      status: packageCard.status,
-      order: packageCard.order,
-      link: packageCard.link || "/tour-details",
-      cities: packageCard.cities || [],
-      days: packageCard.days || 1,
-      startOn: packageCard.startOn
-        ? new Date(packageCard.startOn).toISOString().split("T")[0]
-        : "",
-      joinPrice: packageCard.joinPrice || "",
-    });
-    setImagePreview(packageCard.image);
-    setEditingPackageId(packageCard._id);
-    setModalType("edit");
-  };
-
-  const handleOpenTitleSubtitleModal = () => {
-    setTitleSubtitleData({
-      title: currentTitle,
-      subtitle: currentSubtitle,
-    });
-    setModalType("titleSubtitle");
-  };
-
-  const handleInputChange = (e: any) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddCity = () => {
-    if (cityInput.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        cities: [...prev.cities, cityInput.trim()],
-      }));
-      setCityInput("");
+  // --- Category Modal Handlers ---
+  const handleOpenCategoryModal = (editMode: boolean, category?: any) => {
+    setIsEditMode(editMode);
+    if (editMode && category) {
+      setCategoryId(category._id);
+      setCategoryName(category.name);
+      setCategoryTitle(category.title);
+      setCategoryDescription(category.description || "");
+      setCategoryGuests(category.guests);
+      setCategoryBadge(category.badge || "");
+      setCategoryType(category.categoryType);
+      setCategoryStatus(category.status);
+      setCategoryImagePreview(category.image);
     }
+    setModalType("category");
   };
 
-  const handleRemoveCity = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      cities: prev.cities.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleTitleSubtitleChange = (e: any) => {
-    const { name, value } = e.target;
-    setTitleSubtitleData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubtitleChange = (content: string) => {
-    setTitleSubtitleData((prev) => ({ ...prev, subtitle: content }));
-  };
-
-  const handleImageChange = (files: File[]) => {
+  const handleCategoryImageChange = (files: File[]) => {
     const file = files[0];
     if (!file) return;
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       showAlert("Image size should not exceed 5MB!", "warning");
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       showAlert("Please upload a valid image file!", "warning");
       return;
     }
 
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    setCategoryImageFile(file);
+    setCategoryImagePreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    if (!formData.city.trim()) {
-      showAlert("Please enter city name!", "warning");
+    if (!categoryName || !categoryTitle || !categoryGuests || !categoryType) {
+      showAlert("Please fill all required fields!", "warning");
       return;
     }
 
-    if (modalType === "create" && !imageFile) {
-      showAlert("Please upload an image!", "warning");
-      return;
-    }
-
-    if (formData.cities.length === 0) {
-      showAlert("Please add at least one city!", "warning");
-      return;
-    }
-
-    if (!formData.startOn) {
-      showAlert("Please select a start date!", "warning");
-      return;
-    }
-
-    if (!formData.joinPrice.trim()) {
-      showAlert("Please enter join price!", "warning");
+    if (!isEditMode && !categoryImageFile) {
+      showAlert("Please upload a category image!", "warning");
       return;
     }
 
     try {
-      const submitData = new FormData();
-      submitData.append("city", formData.city.trim());
-      submitData.append("tours", formData.tours.toString());
-      submitData.append("departures", formData.departures.toString());
-      submitData.append("price", formData.price.trim());
-      submitData.append("badge", formData.badge.trim());
-      submitData.append("status", formData.status);
-      submitData.append("order", formData.order.toString());
-      submitData.append("link", formData.link);
-      submitData.append("cities", JSON.stringify(formData.cities));
-      submitData.append("days", formData.days.toString());
-      submitData.append("startOn", formData.startOn);
-      submitData.append("joinPrice", formData.joinPrice.trim());
+      const formData = new FormData();
+      formData.append("name", categoryName);
+      formData.append("title", categoryTitle);
+      formData.append("description", categoryDescription);
+      formData.append("guests", categoryGuests);
+      formData.append("badge", categoryBadge);
+      formData.append("categoryType", categoryType);
+      formData.append("status", categoryStatus);
 
-      if (imageFile) {
-        submitData.append("image", imageFile);
+      if (categoryImageFile) {
+        formData.append("image", categoryImageFile);
       }
 
-      if (modalType === "create") {
-        await addPackageCard(submitData).unwrap();
-        showAlert("Package card created successfully!", "success");
-      } else if (modalType === "edit" && editingPackageId) {
-        await updatePackageCard({
-          packageId: editingPackageId,
-          data: submitData,
-        }).unwrap();
-        showAlert("Package card updated successfully!", "success");
+      if (isEditMode && categoryId) {
+        await updateCategory({ categoryId, data: formData }).unwrap();
+        showAlert("Category updated successfully!", "success");
+      } else {
+        await createCategory(formData).unwrap();
+        showAlert("Category created successfully!", "success");
       }
-
       handleCloseModal();
     } catch (err: any) {
-      console.error("Failed to save package card:", err);
+      console.error("Error:", err);
       showAlert(
-        err?.data?.message || "Failed to save package card. Please try again.",
+        err?.data?.message || `${isEditMode ? "Update" : "Creation"} failed!`,
         "danger",
       );
     }
   };
 
-  const handleTitleSubtitleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>,
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this category?")) return;
+    try {
+      await deleteCategory(id).unwrap();
+      showAlert("Category deleted successfully!", "success");
+    } catch (err: any) {
+      showAlert(err?.data?.message || "Delete failed!", "danger");
+    }
+  };
+
+  // --- Tour Card Modal Handlers ---
+  const handleOpenTourCardModal = (editMode: boolean, card?: any) => {
+    if (!editMode && categories.length === 0) {
+      showAlert("Please create at least one category first!", "warning");
+      return;
+    }
+
+    setIsEditMode(editMode);
+    if (editMode && card) {
+      setTourCardId(card._id);
+      setTourTitle(card.title);
+      setTourSubtitle(card.subtitle);
+      const catId =
+        typeof card.category === "object" && card.category?._id
+          ? card.category._id
+          : card.category;
+      setTourCategory(catId || "");
+      setTourBadge(card.badge || "");
+      setTourMetaDescription(card.metaDescription || "");
+      setTourFeatured(card.featured || false);
+      setTourStatus(card.status);
+      setTourType(card.tourType);
+      setTourDays(card.days);
+      setTourNights(card.nights);
+      setTourStates(card.states || [{ name: "", cities: [""] }]);
+      setTourRoute(card.route);
+      setTourCityDetails(card.cityDetails || [{ name: "", nights: 0 }]);
+
+      // NEW: Use base prices
+      setTourBaseFullPackagePrice(
+        card.baseFullPackagePrice || card.fullPackagePrice || 0,
+      );
+      setTourBaseJoiningPrice(card.baseJoiningPrice || card.joiningPrice || 0);
+      setTourPriceNote(card.priceNote || "");
+
+      setTourManagerIncluded(card.tourManagerIncluded || false);
+      setTourManagerNote(card.tourManagerNote || "");
+      setTourWhyTravel(card.whyTravel || [""]);
+
+      const includeIds = Array.isArray(card.tourIncludes)
+        ? card.tourIncludes.map((inc: any) =>
+            typeof inc === "object" && inc._id ? inc._id : inc,
+          )
+        : [];
+      setTourIncludes(includeIds);
+
+      setTourGalleryPreviews(card.galleryImages || []);
+
+      // NEW: Load departures if available
+      if (card.departures && card.departures.length > 0) {
+        setDepartures(
+          card.departures.map((dep: any) => ({
+            city: dep.city,
+            date: new Date(dep.date).toISOString().split("T")[0],
+            fullPackagePrice: dep.fullPackagePrice,
+            joiningPrice: dep.joiningPrice,
+            availableSeats: dep.availableSeats,
+            totalSeats: dep.totalSeats,
+            status: dep.status,
+          })),
+        );
+      }
+
+      // NEW: Load itinerary if available - MOVED INSIDE EDIT MODE
+      if (card.itinerary && card.itinerary.length > 0) {
+        setItinerary(
+          card.itinerary.map((item: any) => ({
+            day: item.day,
+            date: item.date
+              ? new Date(item.date).toISOString().split("T")[0]
+              : "",
+            title: item.title || "",
+            activity: item.activity || "",
+          })),
+        );
+      }
+    } else {
+      setCurrentTourCardTab("basic");
+      // Set default category for create mode
+      if (categories.length > 0) {
+        setTourCategory(categories[0]._id);
+      }
+    }
+
+    setModalType("tourCard");
+  };
+
+  const handleTourGalleryChange = (files: File[]) => {
+    const validFiles: File[] = [];
+    const previews: string[] = [];
+
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        showAlert(
+          `${file.name} exceeds 5MB. Please upload smaller images.`,
+          "warning",
+        );
+        continue;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        showAlert(`${file.name} is not a valid image file.`, "warning");
+        continue;
+      }
+
+      validFiles.push(file);
+      previews.push(URL.createObjectURL(file));
+    }
+
+    setTourGalleryFiles((prev) => [...prev, ...validFiles]);
+    setTourGalleryPreviews((prev) => [...prev, ...previews]);
+  };
+
+  const handleRemoveGalleryImage = (index: number) => {
+    setTourGalleryFiles((prev) => prev.filter((_, i) => i !== index));
+    setTourGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // State helpers
+  const handleAddState = () => {
+    setTourStates([...tourStates, { name: "", cities: [""] }]);
+  };
+
+  const handleRemoveState = (index: number) => {
+    setTourStates(tourStates.filter((_, i) => i !== index));
+  };
+
+  const handleStateChange = (index: number, field: string, value: string) => {
+    const newStates = [...tourStates];
+    newStates[index] = { ...newStates[index], [field]: value };
+    setTourStates(newStates);
+  };
+
+  const handleAddCity = (stateIndex: number) => {
+    const newStates = [...tourStates];
+    newStates[stateIndex].cities.push("");
+    setTourStates(newStates);
+  };
+
+  const handleRemoveCity = (stateIndex: number, cityIndex: number) => {
+    const newStates = [...tourStates];
+    newStates[stateIndex].cities = newStates[stateIndex].cities.filter(
+      (_, i) => i !== cityIndex,
+    );
+    setTourStates(newStates);
+  };
+
+  const handleCityChange = (
+    stateIndex: number,
+    cityIndex: number,
+    value: string,
   ) => {
+    const newStates = [...tourStates];
+    newStates[stateIndex].cities[cityIndex] = value;
+    setTourStates(newStates);
+  };
+
+  // City Details helpers
+  const handleAddCityDetail = () => {
+    setTourCityDetails([...tourCityDetails, { name: "", nights: 0 }]);
+  };
+
+  const handleRemoveCityDetail = (index: number) => {
+    setTourCityDetails(tourCityDetails.filter((_, i) => i !== index));
+  };
+
+  const handleCityDetailChange = (
+    index: number,
+    field: string,
+    value: string | number,
+  ) => {
+    const newDetails = [...tourCityDetails];
+    newDetails[index] = { ...newDetails[index], [field]: value };
+    setTourCityDetails(newDetails);
+  };
+
+  // Why Travel helpers
+  const handleAddWhyTravel = () => {
+    setTourWhyTravel([...tourWhyTravel, ""]);
+  };
+
+  const handleRemoveWhyTravel = (index: number) => {
+    setTourWhyTravel(tourWhyTravel.filter((_, i) => i !== index));
+  };
+
+  const handleWhyTravelChange = (index: number, value: string) => {
+    const newWhyTravel = [...tourWhyTravel];
+    newWhyTravel[index] = value;
+    setTourWhyTravel(newWhyTravel);
+  };
+
+  // Tour Includes helper
+  const handleToggleInclude = (includeId: string) => {
+    setTourIncludes((prev) => {
+      if (prev.includes(includeId)) {
+        return prev.filter((id) => id !== includeId);
+      } else {
+        return [...prev, includeId];
+      }
+    });
+  };
+
+  // NEW: Departure helpers
+  const handleAddDeparture = () => {
+    setDepartures([
+      ...departures,
+      {
+        city: "Mumbai",
+        date: "",
+        fullPackagePrice: tourBaseFullPackagePrice,
+        joiningPrice: tourBaseJoiningPrice,
+        availableSeats: 40,
+        totalSeats: 40,
+      },
+    ]);
+  };
+
+  const handleRemoveDeparture = (index: number) => {
+    setDepartures(departures.filter((_, i) => i !== index));
+  };
+
+  const handleDepartureChange = (
+    index: number,
+    field: keyof Departure,
+    value: any,
+  ) => {
+    const newDepartures = [...departures];
+    newDepartures[index] = { ...newDepartures[index], [field]: value };
+    setDepartures(newDepartures);
+  };
+
+  // Itinerary helpers
+  const handleAddItinerary = () => {
+    const nextDay =
+      itinerary.length > 0 ? Math.max(...itinerary.map((i) => i.day)) + 1 : 1;
+    setItinerary([
+      ...itinerary,
+      { day: nextDay, date: "", title: "", activity: "" },
+    ]);
+  };
+
+  const handleRemoveItinerary = (index: number) => {
+    setItinerary(itinerary.filter((_, i) => i !== index));
+  };
+
+  const handleItineraryChange = (
+    index: number,
+    field: string,
+    value: string | number,
+  ) => {
+    const newItinerary = [...itinerary];
+    newItinerary[index] = { ...newItinerary[index], [field]: value };
+    setItinerary(newItinerary);
+  };
+
+  const handleTourCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!titleSubtitleData.title.trim() && !titleSubtitleData.subtitle.trim()) {
-      showAlert("Please enter at least title or subtitle!", "warning");
+    if (
+      !tourTitle ||
+      !tourSubtitle ||
+      !tourCategory ||
+      !tourType ||
+      tourDays < 1 ||
+      tourNights < 0 ||
+      !tourRoute ||
+      tourBaseFullPackagePrice <= 0 ||
+      tourBaseJoiningPrice <= 0
+    ) {
+      showAlert("Please fill all required fields!", "warning");
+      return;
+    }
+
+    // Validate states
+    for (const state of tourStates) {
+      if (!state.name || state.cities.length === 0 || !state.cities[0]) {
+        showAlert(
+          "Each state must have a name and at least one city!",
+          "warning",
+        );
+        return;
+      }
+    }
+
+    // Validate city details
+    for (const city of tourCityDetails) {
+      if (!city.name || city.nights < 0) {
+        showAlert(
+          "Each city detail must have a valid name and nights!",
+          "warning",
+        );
+        return;
+      }
+    }
+
+    // NEW: Validate departures
+    if (departures.length === 0) {
+      showAlert("Please add at least one departure!", "warning");
+      return;
+    }
+
+    for (const dep of departures) {
+      if (
+        !dep.city ||
+        !dep.date ||
+        dep.fullPackagePrice <= 0 ||
+        dep.joiningPrice <= 0 ||
+        dep.totalSeats <= 0
+      ) {
+        showAlert("Please fill all departure fields correctly!", "warning");
+        return;
+      }
+    }
+    // NEW: Validate itinerary
+    if (itinerary.length === 0) {
+      showAlert("Please add at least one itinerary item!", "warning");
+      return;
+    }
+
+    for (const item of itinerary) {
+      if (item.day < 1 || !item.activity.trim()) {
+        showAlert(
+          "Each itinerary must have a valid day and activity!",
+          "warning",
+        );
+        return;
+      }
+    }
+    if (!isEditMode && tourGalleryFiles.length === 0) {
+      showAlert("Please upload at least one gallery image!", "warning");
       return;
     }
 
     try {
-      await updateTitleSubtitle(titleSubtitleData).unwrap();
-      showAlert("Title and subtitle updated successfully!", "success");
-      setModalType(null);
+      const formData = new FormData();
+      formData.append("title", tourTitle);
+      formData.append("subtitle", tourSubtitle);
+      formData.append("category", tourCategory);
+      formData.append("badge", tourBadge);
+      formData.append("metaDescription", tourMetaDescription);
+      formData.append("featured", tourFeatured.toString());
+      formData.append("status", tourStatus);
+      formData.append("tourType", tourType);
+      formData.append("days", tourDays.toString());
+      formData.append("nights", tourNights.toString());
+      formData.append("states", JSON.stringify(tourStates));
+      formData.append("route", tourRoute);
+      formData.append("cityDetails", JSON.stringify(tourCityDetails));
+
+      // NEW: Use base prices
+      formData.append(
+        "baseFullPackagePrice",
+        tourBaseFullPackagePrice.toString(),
+      );
+      formData.append("baseJoiningPrice", tourBaseJoiningPrice.toString());
+      formData.append("priceNote", tourPriceNote);
+
+      // NEW: Add departures
+      formData.append("departures", JSON.stringify(departures));
+      formData.append("itinerary", JSON.stringify(itinerary));
+      formData.append("tourManagerIncluded", tourManagerIncluded.toString());
+      formData.append("tourManagerNote", tourManagerNote);
+      formData.append(
+        "whyTravel",
+        JSON.stringify(tourWhyTravel.filter((w) => w)),
+      );
+      formData.append("tourIncludes", JSON.stringify(tourIncludes));
+
+      tourGalleryFiles.forEach((file) => {
+        formData.append("galleryImages", file);
+      });
+
+      if (isEditMode && tourCardId) {
+        await updateTourCard({ cardId: tourCardId, data: formData }).unwrap();
+        showAlert("Tour package card updated successfully!", "success");
+      } else {
+        await createTourCard(formData).unwrap();
+        showAlert("Tour package card created successfully!", "success");
+      }
+      handleCloseModal();
     } catch (err: any) {
-      console.error("Failed to update title/subtitle:", err);
+      console.error("Error:", err);
       showAlert(
-        err?.data?.message ||
-          "Failed to update title/subtitle. Please try again.",
+        err?.data?.message || `${isEditMode ? "Update" : "Creation"} failed!`,
         "danger",
       );
     }
   };
 
-  const handleDelete = async (id: string, city: string) => {
-    if (!confirm(`Are you sure you want to delete ${city}?`)) return;
-
+  const handleDeleteTourCard = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this tour package card?"))
+      return;
     try {
-      await deletePackageCard(id).unwrap();
-      showAlert("Package card deleted successfully!", "success");
+      await deleteTourCard(id).unwrap();
+      showAlert("Tour package card deleted successfully!", "success");
     } catch (err: any) {
-      showAlert(
-        err?.data?.message || "Failed to delete package card.",
-        "danger",
-      );
+      showAlert(err?.data?.message || "Delete failed!", "danger");
     }
   };
+
+  // NEW: Departure management modal handlers
+  const handleOpenDeparturesModal = (tourId: string) => {
+    setSelectedTourForDepartures(tourId);
+    setModalType("departures");
+  };
+
+  const getModalTitle = () => {
+    if (modalType === "category")
+      return isEditMode ? "Edit Category" : "Add Category";
+    if (modalType === "tourCard")
+      return isEditMode ? "Edit Tour Package Card" : "Add Tour Package Card";
+    if (modalType === "departures") return "Manage Departures";
+    return "";
+  };
+
+  if (includesLoading) {
+    return (
+      <div
+        className="d-flex align-items-center justify-content-center"
+        style={{ minHeight: "100vh" }}
+      >
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="d-flex align-items-center justify-content-center"
+        style={{ minHeight: "100vh" }}
+      >
+        <Alert variant="danger">
+          <IconifyIcon
+            icon="solar:danger-triangle-bold-duotone"
+            className="fs-20 me-2"
+          />
+          Failed to load includes data. Please try again.
+        </Alert>
+      </div>
+    );
+  }
+
+  const renderModalContent = () => {
+    if (modalType === "category") {
+      return (
+        <Form onSubmit={handleCategorySubmit}>
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Name <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  value={categoryName}
+                  onChange={(e) => setCategoryName(e.target.value)}
+                  placeholder="Enter category name"
+                  required
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Title <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  value={categoryTitle}
+                  onChange={(e) => setCategoryTitle(e.target.value)}
+                  placeholder="Enter category title"
+                  required
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Description</Form.Label>
+            <div style={{ height: "250px" }}>
+              <ReactQuill
+                theme="snow"
+                value={categoryDescription}
+                onChange={setCategoryDescription}
+                modules={modules}
+                placeholder="Enter category description..."
+                style={{ height: "200px", marginBottom: "50px" }}
+              />
+            </div>
+          </Form.Group>
+
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Guests <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  value={categoryGuests}
+                  onChange={(e) => setCategoryGuests(e.target.value)}
+                  placeholder="e.g., 1,00,286"
+                  required
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Badge</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={categoryBadge}
+                  onChange={(e) => setCategoryBadge(e.target.value)}
+                  placeholder="Badge text"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Category Type <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Select
+                  value={categoryType}
+                  onChange={(e) => setCategoryType(e.target.value)}
+                  required
+                >
+                  {CATEGORY_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Status</Form.Label>
+                <Form.Select
+                  value={categoryStatus}
+                  onChange={(e) => setCategoryStatus(e.target.value)}
+                >
+                  {STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Form.Group className="mb-3">
+            <Form.Label>
+              Image {!isEditMode && <span className="text-danger">*</span>}
+            </Form.Label>
+
+            {!categoryImagePreview ? (
+              <FileUploader
+                onFileUpload={handleCategoryImageChange}
+                icon="ri:upload-cloud-2-line"
+                text="Drop image here or click to upload."
+                extraText="(Maximum file size: 5MB)"
+              />
+            ) : (
+              <Card className="mt-1 mb-0 shadow-none border">
+                <div className="p-2">
+                  <Row className="align-items-center">
+                    <Col xs="auto">
+                      <img
+                        src={categoryImagePreview}
+                        className="avatar-sm rounded bg-light"
+                        alt="preview"
+                        style={{
+                          width: "48px",
+                          height: "48px",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </Col>
+                    <Col className="ps-0">
+                      <p className="text-muted fw-bold mb-0">
+                        {categoryImageFile?.name || "Current Image"}
+                      </p>
+                    </Col>
+                    <Col xs="auto">
+                      <Link
+                        href=""
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCategoryImageFile(null);
+                          setCategoryImagePreview("");
+                        }}
+                        className="btn btn-link btn-lg text-muted"
+                      >
+                        <IconifyIcon icon="tabler:x" />
+                      </Link>
+                    </Col>
+                  </Row>
+                </div>
+              </Card>
+            )}
+          </Form.Group>
+
+          <div className="d-flex justify-content-end gap-2">
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              {isEditMode ? "Update" : "Create"}
+            </Button>
+          </div>
+        </Form>
+      );
+    }
+
+    if (modalType === "tourCard") {
+      return (
+        <Form onSubmit={handleTourCardSubmit}>
+          <Tabs
+            activeKey={currentTourCardTab}
+            onSelect={(k) => setCurrentTourCardTab(k || "basic")}
+            className="mb-3"
+          >
+            <Tab eventKey="basic" title="Basic Info">
+              <BasicInfoTab
+                tourTitle={tourTitle}
+                setTourTitle={setTourTitle}
+                tourSubtitle={tourSubtitle}
+                setTourSubtitle={setTourSubtitle}
+                tourCategory={tourCategory}
+                setTourCategory={setTourCategory}
+                tourType={tourType}
+                setTourType={setTourType}
+                tourBadge={tourBadge}
+                setTourBadge={setTourBadge}
+                tourStatus={tourStatus}
+                setTourStatus={setTourStatus}
+                tourMetaDescription={tourMetaDescription}
+                setTourMetaDescription={setTourMetaDescription}
+                tourDays={tourDays}
+                setTourDays={setTourDays}
+                tourNights={tourNights}
+                setTourNights={setTourNights}
+                categories={categories}
+              />
+            </Tab>
+
+            <Tab eventKey="location" title="Location">
+              <LocationTab
+                tourRoute={tourRoute}
+                setTourRoute={setTourRoute}
+                tourStates={tourStates}
+                setTourStates={setTourStates}
+                tourCityDetails={tourCityDetails}
+                setTourCityDetails={setTourCityDetails}
+                handleAddState={handleAddState}
+                handleRemoveState={handleRemoveState}
+                handleStateChange={handleStateChange}
+                handleAddCity={handleAddCity}
+                handleRemoveCity={handleRemoveCity}
+                handleCityChange={handleCityChange}
+                handleAddCityDetail={handleAddCityDetail}
+                handleRemoveCityDetail={handleRemoveCityDetail}
+                handleCityDetailChange={handleCityDetailChange}
+              />
+            </Tab>
+
+            <Tab eventKey="pricing" title="Pricing">
+              <PricingTab
+                tourBaseFullPackagePrice={tourBaseFullPackagePrice}
+                setTourBaseFullPackagePrice={setTourBaseFullPackagePrice}
+                tourBaseJoiningPrice={tourBaseJoiningPrice}
+                setTourBaseJoiningPrice={setTourBaseJoiningPrice}
+                tourPriceNote={tourPriceNote}
+                setTourPriceNote={setTourPriceNote}
+              />
+            </Tab>
+
+            <Tab eventKey="departures" title="Departures">
+              <DeparturesTab
+                departures={departures}
+                handleAddDeparture={handleAddDeparture}
+                handleRemoveDeparture={handleRemoveDeparture}
+                handleDepartureChange={handleDepartureChange}
+              />
+            </Tab>
+
+            <Tab eventKey="itinerary" title="Itinerary">
+              <ItineraryTab
+                itinerary={itinerary}
+                handleAddItinerary={handleAddItinerary}
+                handleRemoveItinerary={handleRemoveItinerary}
+                handleItineraryChange={handleItineraryChange}
+              />
+            </Tab>
+
+            <Tab eventKey="includes" title="Tour Includes">
+              <IncludesTab
+                includesData={includesData}
+                tourIncludes={tourIncludes}
+                handleToggleInclude={handleToggleInclude}
+                tourManagerIncluded={tourManagerIncluded}
+                setTourManagerIncluded={setTourManagerIncluded}
+                tourManagerNote={tourManagerNote}
+                setTourManagerNote={setTourManagerNote}
+                tourWhyTravel={tourWhyTravel}
+                handleAddWhyTravel={handleAddWhyTravel}
+                handleRemoveWhyTravel={handleRemoveWhyTravel}
+                handleWhyTravelChange={handleWhyTravelChange}
+              />
+            </Tab>
+
+            <Tab eventKey="gallery" title="Gallery">
+              <GalleryTab
+                tourGalleryPreviews={tourGalleryPreviews}
+                tourGalleryFiles={tourGalleryFiles}
+                isEditMode={isEditMode}
+                handleTourGalleryChange={handleTourGalleryChange}
+                handleRemoveGalleryImage={handleRemoveGalleryImage}
+              />
+            </Tab>
+          </Tabs>
+
+          <div className="d-flex justify-content-end gap-2">
+            <Button variant="secondary" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              {isEditMode ? "Update" : "Create"}
+            </Button>
+          </div>
+        </Form>
+      );
+    }
+
+    return null;
+  };
+
+  const isLoading = isCategoriesLoading || isTourCardsLoading;
 
   if (isLoading) {
     return (
@@ -346,7 +1079,10 @@ const TourPackagePage: React.FC = () => {
     <>
       <Row>
         <Col xs={12}>
-          <PageTitle title="Tour Packages" subTitle="Content Management" />
+          <PageTitle
+            title="Tour Package Management"
+            subTitle="Content Management"
+          />
 
           {alert.show && (
             <Alert
@@ -372,544 +1108,46 @@ const TourPackagePage: React.FC = () => {
           )}
 
           <ComponentContainerCard
-            title="Tour Package Settings"
-            description="Manage tour package title, subtitle and package cards."
+            title="Tour Packages"
+            description="Manage tour package categories and cards."
           >
-            {/* Title & Subtitle Section */}
-            <div className="mb-4 p-3 bg-light rounded">
-              <h4>{currentTitle || "No title set"}</h4>
-              <div
-                className="text-muted mb-0"
-                dangerouslySetInnerHTML={{
-                  __html: currentSubtitle || "No subtitle set",
-                }}
-              />
-
-              <div className="d-flex justify-content-end mt-3">
-                <Button onClick={handleOpenTitleSubtitleModal}>
-                  <IconifyIcon icon="tabler:edit" className="me-1" />
-                  Update Title & Subtitle
-                </Button>
-              </div>
-            </div>
-
-            {/* Package Cards Section */}
-            {packages.length > 0 ? (
-              <>
-                <div className="mb-3">
-                  <Button onClick={handleOpenCreateModal}>
-                    <IconifyIcon icon="tabler:plus" className="me-1" />
-                    Add Package Card
-                  </Button>
-                </div>
-
-                <div className="table-responsive-sm">
-                  <table className="table table-striped-columns mb-0">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Image</th>
-                        <th>City</th>
-                        <th>Tours</th>
-                        <th>Departures</th>
-                        <th>Price</th>
-                        <th>Badge</th>
-                        <th>Status</th>
-                        <th>Order</th>
-                        <th className="text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {packages.length === 0 ? (
-                        <tr>
-                          <td colSpan={10} className="text-center py-4">
-                            <p className="text-muted mb-0">
-                              No package cards found!
-                            </p>
-                          </td>
-                        </tr>
-                      ) : (
-                        packages.map((pkg: any, index: number) => (
-                          <tr key={pkg._id || index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <img
-                                src={pkg.image}
-                                alt={pkg.city}
-                                className="avatar-sm rounded"
-                                style={{
-                                  width: "80px",
-                                  height: "80px",
-                                  objectFit: "cover",
-                                }}
-                              />
-                            </td>
-                            <td>{pkg.city}</td>
-                            <td>{pkg.tours}</td>
-                            <td>{pkg.departures}</td>
-                            <td>{pkg.price}</td>
-                            <td>
-                              {pkg.badge ? (
-                                <span className="badge bg-warning text-dark">
-                                  {pkg.badge}
-                                </span>
-                              ) : (
-                                <span className="text-muted">-</span>
-                              )}
-                            </td>
-                            <td>
-                              <span
-                                className={`badge ${
-                                  pkg.status === "Active"
-                                    ? "bg-success"
-                                    : "bg-danger"
-                                }`}
-                              >
-                                {pkg.status}
-                              </span>
-                            </td>
-                            <td>{pkg.order}</td>
-                            <td className="text-center">
-                              <Link
-                                href=""
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleOpenEditModal(pkg);
-                                }}
-                                className="link-reset fs-20 p-1"
-                              >
-                                <IconifyIcon icon="tabler:pencil" />
-                              </Link>
-                              <Link
-                                href=""
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleDelete(pkg._id, pkg.city);
-                                }}
-                                className="link-reset fs-20 p-1"
-                              >
-                                <IconifyIcon icon="tabler:trash" />
-                              </Link>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-5">
-                <IconifyIcon
-                  icon="solar:box-bold-duotone"
-                  className="fs-1 text-muted mb-3"
+            <Tabs
+              activeKey={activeTab}
+              onSelect={(k) => setActiveTab(k || "categories")}
+              className="mb-3"
+            >
+              <Tab eventKey="categories" title="Categories">
+                <CategorySection
+                  categories={categories}
+                  onOpenCategoryModal={handleOpenCategoryModal}
+                  onDeleteCategory={handleDeleteCategory}
                 />
-                <p className="text-muted mb-3">No package cards found!</p>
-                <Button onClick={handleOpenCreateModal}>
-                  <IconifyIcon icon="tabler:plus" className="me-1" />
-                  Add Package Card
-                </Button>
-              </div>
-            )}
+              </Tab>
+
+              <Tab eventKey="tourCards" title="Tour Package Cards">
+                <TourCardSection
+                  tourCards={tourCards}
+                  onOpenTourCardModal={handleOpenTourCardModal}
+                  onDeleteTourCard={handleDeleteTourCard}
+                />
+              </Tab>
+            </Tabs>
           </ComponentContainerCard>
         </Col>
       </Row>
 
-      {/* Title/Subtitle Modal */}
       <Modal
-        show={modalType === "titleSubtitle"}
-        onHide={() => setModalType(null)}
-        centered
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Update Title & Subtitle</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleTitleSubtitleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Title</Form.Label>
-              <Form.Control
-                type="text"
-                name="title"
-                value={titleSubtitleData.title}
-                onChange={handleTitleSubtitleChange}
-                placeholder="Enter title"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Subtitle</Form.Label>
-              <div style={{ height: "250px" }}>
-                <ReactQuill
-                  modules={modules}
-                  value={titleSubtitleData.subtitle}
-                  onChange={handleSubtitleChange}
-                  theme="snow"
-                  placeholder="Enter subtitle..."
-                  style={{ height: "200px" }}
-                />
-              </div>
-            </Form.Group>
-
-            <div className="d-flex justify-content-end gap-2 mt-3">
-              <Button variant="secondary" onClick={() => setModalType(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isUpdatingTitle}
-              >
-                {isUpdatingTitle ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Updating...
-                  </>
-                ) : (
-                  "Update"
-                )}
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
-
-      {/* Create/Edit Package Card Modal */}
-      <Modal
-        show={modalType === "create" || modalType === "edit"}
+        show={modalType !== null}
         onHide={handleCloseModal}
         centered
         size="lg"
+        scrollable
       >
         <Modal.Header closeButton>
-          <Modal.Title>
-            {modalType === "create" ? "Add Package Card" : "Edit Package Card"}
-          </Modal.Title>
+          <Modal.Title>{getModalTitle()}</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmit}>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    City <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    placeholder="Enter city name"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Price <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="e.g., ₹32,000"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Join Price <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="joinPrice"
-                    value={formData.joinPrice}
-                    onChange={handleInputChange}
-                    placeholder="e.g., ₹28,000"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Link <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="link"
-                    value={formData.link}
-                    onChange={handleInputChange}
-                    placeholder="/tour-details"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Tours <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="tours"
-                    value={formData.tours}
-                    onChange={handleInputChange}
-                    placeholder="Number of tours"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Departures <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="departures"
-                    value={formData.departures}
-                    onChange={handleInputChange}
-                    placeholder="Number of departures"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Days <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="days"
-                    value={formData.days}
-                    onChange={handleInputChange}
-                    placeholder="Number of days"
-                    min="1"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Start Date <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="startOn"
-                    value={formData.startOn}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Cities <span className="text-danger">*</span>
-              </Form.Label>
-              <div className="gap-2 mb-2">
-                <Form.Control
-                  type="text"
-                  value={cityInput}
-                  onChange={(e) => setCityInput(e.target.value)}
-                  placeholder="Enter city name"
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddCity();
-                    }
-                  }}
-                />
-                <Button
-                  className="mt-2"
-                  variant="primary"
-                  onClick={handleAddCity}
-                  type="button"
-                >
-                  <IconifyIcon icon="tabler:plus" className="me-1" />
-                  Add City
-                </Button>
-              </div>
-              {formData.cities.length > 0 && (
-                <div className="d-flex flex-wrap gap-2 mt-2">
-                  {formData.cities.map((city, index) => (
-                    <div
-                      key={index}
-                      className="badge bg-secondary d-flex align-items-center gap-2"
-                      style={{ fontSize: "14px", padding: "8px 12px" }}
-                    >
-                      <span>{city}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCity(index)}
-                        className="btn-close btn-close-white"
-                        style={{ fontSize: "10px" }}
-                        aria-label="Remove"
-                      ></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {formData.cities.length === 0 && (
-                <Form.Text className="text-muted">
-                  No cities added yet. Add at least one city.
-                </Form.Text>
-              )}
-            </Form.Group>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Badge (Optional)</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="badge"
-                    value={formData.badge}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Special Offer"
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Order</Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="order"
-                    value={formData.order}
-                    onChange={handleInputChange}
-                    placeholder="Display order"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Status <span className="text-danger">*</span>
-              </Form.Label>
-              <Form.Select
-                name="status"
-                value={formData.status}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Image{" "}
-                {modalType === "create" && (
-                  <span className="text-danger">*</span>
-                )}
-              </Form.Label>
-
-              {!imagePreview ? (
-                <FileUploader
-                  onFileUpload={handleImageChange}
-                  icon="ri:upload-cloud-2-line"
-                  text="Drop image here or click to upload."
-                  extraText="(Maximum file size: 5MB. Supported formats: JPG, PNG, WebP)"
-                />
-              ) : (
-                <Card className="mt-1 mb-0 shadow-none border">
-                  <div className="p-2">
-                    <Row className="align-items-center">
-                      <Col xs="auto">
-                        <img
-                          src={imagePreview}
-                          className="avatar-sm rounded bg-light"
-                          alt="preview"
-                          style={{
-                            width: "48px",
-                            height: "48px",
-                            objectFit: "cover",
-                          }}
-                        />
-                      </Col>
-                      <Col className="ps-0">
-                        <p className="text-muted fw-bold mb-0">
-                          {imageFile?.name || "Current Image"}
-                        </p>
-                        <p className="mb-0 text-muted small">
-                          {imageFile
-                            ? `${(imageFile.size / 1024).toFixed(2)} KB`
-                            : "Uploaded"}
-                        </p>
-                      </Col>
-                      <Col xs="auto">
-                        <Link
-                          href=""
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setImageFile(null);
-                            setImagePreview("");
-                          }}
-                          className="btn btn-link btn-lg text-muted"
-                        >
-                          <IconifyIcon icon="tabler:x" />
-                        </Link>
-                      </Col>
-                    </Row>
-                  </div>
-                </Card>
-              )}
-            </Form.Group>
-
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={handleCloseModal}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isCreating || isUpdating}
-              >
-                {isCreating || isUpdating ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    {modalType === "create" ? "Creating..." : "Updating..."}
-                  </>
-                ) : (
-                  <>{modalType === "create" ? "Create" : "Update"}</>
-                )}
-              </Button>
-            </div>
-          </Form>
+        <Modal.Body style={{ maxHeight: "70vh", overflowY: "auto" }}>
+          {renderModalContent()}
         </Modal.Body>
       </Modal>
     </>
