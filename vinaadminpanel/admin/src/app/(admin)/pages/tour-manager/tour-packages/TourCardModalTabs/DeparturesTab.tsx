@@ -1,7 +1,6 @@
 import { Row, Col, Form, Card, Button, Alert } from "react-bootstrap";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { Departure } from "../types";
-import { DEPARTURE_CITIES } from "../constant";
 
 interface DeparturesTabProps {
   departures: Departure[];
@@ -54,18 +53,14 @@ const DeparturesTab = ({
                   <Form.Label>
                     Departure City <span className="text-danger">*</span>
                   </Form.Label>
-                  <Form.Select
+                  <Form.Control
+                    type="text"
                     value={departure.city}
                     onChange={(e) =>
                       handleDepartureChange(index, "city", e.target.value)
                     }
-                  >
-                    {DEPARTURE_CITIES.map((city: any) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </Form.Select>
+                    placeholder="Enter departure city"
+                  />
                 </Form.Group>
               </Col>
               <Col md={4}>

@@ -83,6 +83,7 @@ import { becomePartnerRouter } from '../modules/salesPartner/partnerRoutes';
 import { becomePartnerFormRouter } from '../modules/becomePartnerForm/formRoutes';
 import { commentRouter } from '../modules/comments/commentRoutes';
 import { IncludedRouter } from '../modules/toursIncluded/toursIncludedRoutes';
+import { bookingRouter } from '../modules/bookPackage/bookingRoutes';
 const router = Router();
 const moduleRoutes = [
   {
@@ -441,6 +442,14 @@ const moduleRoutes = [
   {
     path: '/includes',
     route: IncludedRouter,
+  },
+  {
+    path: '/register',
+    route: authRouter,
+  },
+  {
+    path: '/booking',
+    route: bookingRouter,
   },
 ];
 

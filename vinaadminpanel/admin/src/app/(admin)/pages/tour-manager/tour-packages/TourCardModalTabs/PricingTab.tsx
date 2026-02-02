@@ -71,24 +71,23 @@ const PricingTab = ({
           </Form.Group>
         </Col>
       </Row>
-
-      <Row>
-        <Col md={12}>
-          <Form.Group className="mb-3">
-            <Form.Label>Price Note</Form.Label>
-            <div style={{ height: "200px" }}>
-              <ReactQuill
-                theme="snow"
-                value={tourPriceNote}
-                onChange={setTourPriceNote}
-                modules={modules}
-                placeholder="Additional pricing notes..."
-                style={{ height: "150px", marginBottom: "50px" }}
-              />
-            </div>
-          </Form.Group>
-        </Col>
-      </Row>
+      <div className="w-full">
+        <div className="w-full mb-3">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
+            Price Note
+          </label>
+          <div className="w-full">
+            <ReactQuill
+              theme="snow"
+              value={tourPriceNote}
+              onChange={setTourPriceNote}
+              modules={modules}
+              placeholder="Additional pricing notes..."
+              className="w-full bg-white rounded-lg"
+            />
+          </div>
+        </div>
+      </div>
     </>
   );
 };

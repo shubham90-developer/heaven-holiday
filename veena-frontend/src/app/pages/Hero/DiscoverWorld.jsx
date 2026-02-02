@@ -1,249 +1,146 @@
 "use client";
-import React, { useState } from "react";
-import { FaCcVisa, FaStar } from "react-icons/fa";
+import React, { useState, useMemo } from "react";
+import { FaStar } from "react-icons/fa";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Building,
-  Building2,
-  Bus,
-  Camera,
-  Cookie,
-  Heart,
-  PlaneTakeoff,
-  User,
-} from "lucide-react";
+import { Heart, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-const toursData = {
-  Europe: [
-    {
-      id: 1,
-      img: "/assets/img/tour-card/1.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Splendours",
-      reviews: 40,
-      days: 10,
-      destinations: "10 Countries 16 Cities",
-      departures: "7 Dates",
-      emi: "₹8,835/mo",
-      price: "₹2,62,000",
-    },
-    {
-      id: 2,
-      img: "/assets/img/tour-card/2.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Panorama",
-      reviews: 22,
-      days: 8,
-      destinations: "8 Countries 12 Cities",
-      departures: "2 Dates",
-      emi: "₹8,363/mo",
-      price: "₹2,48,000",
-    },
-    {
-      id: 3,
-      img: "/assets/img/tour-card/3.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Wonders",
-      reviews: 39,
-      days: 13,
-      destinations: "11 Countries 21 Cities",
-      departures: "5 Dates",
-      emi: "₹10,858/mo",
-      price: "₹3,22,000",
-    },
-    {
-      id: 4,
-      img: "/assets/img/tour-card/4.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Jewels with Versailles",
-      reviews: 197,
-      days: 15,
-      destinations: "12 Countries 23 Cities",
-      departures: "4 Dates",
-      emi: "₹12,982/mo",
-      price: "₹3,85,000",
-    },
-  ],
-  "Australia & New Zealand": [
-    {
-      id: 1,
-      img: "/assets/img/tour-card/1.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Splendours",
-      reviews: 40,
-      days: 10,
-      destinations: "10 Countries 16 Cities",
-      departures: "7 Dates",
-      emi: "₹8,835/mo",
-      price: "₹2,62,000",
-    },
-
-    {
-      id: 3,
-      img: "/assets/img/tour-card/3.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Wonders",
-      reviews: 39,
-      days: 13,
-      destinations: "11 Countries 21 Cities",
-      departures: "5 Dates",
-      emi: "₹10,858/mo",
-      price: "₹3,22,000",
-    },
-    {
-      id: 4,
-      img: "/assets/img/tour-card/4.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Jewels with Versailles",
-      reviews: 197,
-      days: 15,
-      destinations: "12 Countries 23 Cities",
-      departures: "4 Dates",
-      emi: "₹12,982/mo",
-      price: "₹3,85,000",
-    },
-  ],
-  Japan: [
-    {
-      id: 1,
-      img: "/assets/img/tour-card/1.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Splendours",
-      reviews: 40,
-      days: 10,
-      destinations: "10 Countries 16 Cities",
-      departures: "7 Dates",
-      emi: "₹8,835/mo",
-      price: "₹2,62,000",
-    },
-    {
-      id: 2,
-      img: "/assets/img/tour-card/2.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Panorama",
-      reviews: 22,
-      days: 8,
-      destinations: "8 Countries 12 Cities",
-      departures: "2 Dates",
-      emi: "₹8,363/mo",
-      price: "₹2,48,000",
-    },
-  ],
-  Africa: [
-    {
-      id: 2,
-      img: "/assets/img/tour-card/2.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Panorama",
-      reviews: 22,
-      days: 8,
-      destinations: "8 Countries 12 Cities",
-      departures: "2 Dates",
-      emi: "₹8,363/mo",
-      price: "₹2,48,000",
-    },
-    {
-      id: 3,
-      img: "/assets/img/tour-card/3.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Wonders",
-      reviews: 39,
-      days: 13,
-      destinations: "11 Countries 21 Cities",
-      departures: "5 Dates",
-      emi: "₹10,858/mo",
-      price: "₹3,22,000",
-    },
-    {
-      id: 4,
-      img: "/assets/img/tour-card/4.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Jewels with Versailles",
-      reviews: 197,
-      days: 15,
-      destinations: "12 Countries 23 Cities",
-      departures: "4 Dates",
-      emi: "₹12,982/mo",
-      price: "₹3,85,000",
-    },
-  ],
-  "Southeast Asia": [
-    {
-      id: 1,
-      img: "/assets/img/tour-card/1.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Splendours",
-      reviews: 40,
-      days: 10,
-      destinations: "10 Countries 16 Cities",
-      departures: "7 Dates",
-      emi: "₹8,835/mo",
-      price: "₹2,62,000",
-    },
-    {
-      id: 2,
-      img: "/assets/img/tour-card/2.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Panorama",
-      reviews: 22,
-      days: 8,
-      destinations: "8 Countries 12 Cities",
-      departures: "2 Dates",
-      emi: "₹8,363/mo",
-      price: "₹2,48,000",
-    },
-    {
-      id: 3,
-      img: "/assets/img/tour-card/3.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Wonders",
-      reviews: 39,
-      days: 13,
-      destinations: "11 Countries 21 Cities",
-      departures: "5 Dates",
-      emi: "₹10,858/mo",
-      price: "₹3,22,000",
-    },
-    {
-      id: 4,
-      img: "/assets/img/tour-card/4.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Jewels with Versailles",
-      reviews: 197,
-      days: 15,
-      destinations: "12 Countries 23 Cities",
-      departures: "4 Dates",
-      emi: "₹12,982/mo",
-      price: "₹3,85,000",
-    },
-  ],
-};
+import {
+  useGetCategoriesQuery,
+  useGetTourPackageQuery,
+} from "store/toursManagement/toursPackagesApi";
+import { useAddToWishlistMutation } from "store/authApi/authApi";
+import { auth } from "@/app/config/firebase";
 
 const DiscoverWorld = () => {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("Europe");
+  const [activeTab, setActiveTab] = useState("");
+
+  const { data: categoriesData, isLoading: categoriesLoading } =
+    useGetCategoriesQuery();
+  const { data: tourPackageData, isLoading: packageLoading } =
+    useGetTourPackageQuery();
+  const [addToWishlist] = useAddToWishlistMutation();
+
+  // Extract active "world" categories
+  const worldCategories = useMemo(() => {
+    if (!categoriesData?.data) return [];
+    return categoriesData.data.filter(
+      (category) =>
+        category.status === "Active" && category.categoryType === "world",
+    );
+  }, [categoriesData]);
+
+  // Extract active tour packages
+  const activeTourPackages = useMemo(() => {
+    if (!tourPackageData?.data) return [];
+    return tourPackageData.data.filter((pkg) => pkg.status === "Active");
+  }, [tourPackageData]);
+
+  // Group packages by category
+  const packagesByCategory = useMemo(() => {
+    const grouped = {};
+
+    activeTourPackages.forEach((pkg) => {
+      const categoryId = pkg.category?._id;
+      if (categoryId) {
+        if (!grouped[categoryId]) {
+          grouped[categoryId] = [];
+        }
+        grouped[categoryId].push(pkg);
+      }
+    });
+
+    return grouped;
+  }, [activeTourPackages]);
+
+  // Set initial active tab when categories load
+  React.useEffect(() => {
+    if (worldCategories.length > 0 && !activeTab) {
+      setActiveTab(worldCategories[0]._id);
+    }
+  }, [worldCategories, activeTab]);
+
+  // Get packages for active category
+  const activePackages = useMemo(() => {
+    return packagesByCategory[activeTab] || [];
+  }, [packagesByCategory, activeTab]);
+
+  // Format price
+  const formatPrice = (price) => {
+    return `₹${price.toLocaleString()}`;
+  };
+
+  // Get states text
+  const getStatesText = (states) => {
+    if (!states || states.length === 0) return "";
+    const stateCount = states.length;
+    const cityCount = states.reduce(
+      (acc, state) => acc + (state.cities?.length || 0),
+      0,
+    );
+    return `${stateCount} State${stateCount > 1 ? "s" : ""} ${cityCount} Cities`;
+  };
+
+  // Handle add to wishlist
+  const handleAddToWishlist = async (packageId, e) => {
+    e.preventDefault(); // Prevent any default behavior
+    e.stopPropagation(); // Stop event bubbling
+
+    try {
+      // Check if user is authenticated
+      const token = localStorage.getItem("authToken");
+
+      if (!token && !auth.currentUser) {
+        alert("Please login first");
+        router.push("/login");
+        return;
+      }
+
+      // Backend gets Firebase UID from token automatically
+      await addToWishlist({ packageId }).unwrap();
+      alert("Package added to wishlist successfully!");
+
+      // Redirect to wishlist page
+      router.push("/account/wishlist");
+    } catch (error) {
+      console.error("Wishlist error:", error);
+      console.log("Error data:", error?.data);
+      console.log("Error message:", error?.data?.message);
+
+      if (error?.data?.message) {
+        alert(error.data.message);
+      } else if (error?.message) {
+        alert(error.message);
+      } else {
+        alert("Failed to add to wishlist");
+      }
+    }
+  };
+
+  if (categoriesLoading || packageLoading) {
+    return (
+      <section className="py-12 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <p className="text-center text-gray-500">Loading...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (worldCategories.length === 0) {
+    return (
+      <section className="py-12 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <p className="text-center text-gray-500">No categories available.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-12 bg-white relative">
@@ -256,7 +153,7 @@ const DiscoverWorld = () => {
         {/* Underline Image */}
         <div className="flex justify-center mb-8">
           <img
-            src="/assets/img/header-bottom.svg" // 👉 replace with your underline image path
+            src="/assets/img/header-bottom.svg"
             alt="underline"
             className="w-40 md:w-50"
           />
@@ -264,22 +161,22 @@ const DiscoverWorld = () => {
 
         {/* Tabs */}
         <div className="flex justify-center gap-3 mb-10 flex-wrap">
-          {Object.keys(toursData).map((tab) => (
+          {worldCategories.map((category) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={category._id}
+              onClick={() => setActiveTab(category._id)}
               className={`px-4 py-1 text-sm rounded-md border ${
-                activeTab === tab
+                activeTab === category._id
                   ? "bg-blue-900 text-white"
                   : "bg-white text-gray-700"
               }`}
             >
-              {tab}
+              {category.name}
             </button>
           ))}
         </div>
 
-        {/* Slider Wrapper with relative for positioning */}
+        {/* Slider Wrapper */}
         <div className="relative">
           <Swiper
             modules={[Navigation]}
@@ -296,15 +193,18 @@ const DiscoverWorld = () => {
             }}
             className="pb-10"
           >
-            {toursData[activeTab].length > 0 ? (
-              toursData[activeTab].map((tour) => (
-                <SwiperSlide key={tour.id}>
-                  <div className=" border border-gray-300 rounded-lg shadow-sm bg-white overflow-hidden">
-                    <div className="flex ">
+            {activePackages.length > 0 ? (
+              activePackages.map((tour) => (
+                <SwiperSlide key={tour._id}>
+                  <div className="border border-gray-300 rounded-lg shadow-sm bg-white overflow-hidden">
+                    <div className="flex">
                       {/* Left Image with Wishlist */}
                       <div className="relative w-1/2">
                         <Image
-                          src={tour.img}
+                          src={
+                            tour.category?.image ||
+                            "/assets/img/tour-card/1.avif"
+                          }
                           alt={tour.title}
                           width={1000}
                           height={600}
@@ -314,34 +214,38 @@ const DiscoverWorld = () => {
                         <div className="absolute top-3 right-3 group">
                           <button
                             className="p-2 bg-gray-400 rounded-full shadow hover:bg-gray-500 relative cursor-pointer"
-                            onClick={() => router.push("/wishlist")}
+                            onClick={(e) => handleAddToWishlist(tour._id, e)}
                           >
                             <Heart className="w-3 h-3 text-white" />
                           </button>
 
                           {/* Tooltip */}
-                          <div
-                            className="absolute top-full right-1/2 translate-x-1/2 mt-1 
-                  hidden group-hover:flex items-center justify-center
-                  bg-black text-white text-xs rounded px-2 py-1 shadow z-10 whitespace-nowrap"
-                          >
+                          <div className="absolute top-full right-1/2 translate-x-1/2 mt-1 hidden group-hover:flex items-center justify-center bg-black text-white text-xs rounded px-2 py-1 shadow z-10 whitespace-nowrap">
                             Add to Wishlist
                           </div>
                         </div>
 
-                        {/* Tag */}
-                        <span className="absolute bottom-2 left-2 bg-orange-500 text-white text-[10px] px-2 py-1 rounded">
-                          {tour.tag.slice(0, 16)}...
-                        </span>
+                        {/* Badge/Tag */}
+                        {tour.badge && (
+                          <span className="absolute bottom-2 left-2 bg-orange-500 text-white text-[10px] px-2 py-1 rounded">
+                            {tour.badge.length > 16
+                              ? `${tour.badge.slice(0, 16)}...`
+                              : tour.badge}
+                          </span>
+                        )}
                       </div>
 
                       {/* Right Content */}
                       <div className="w-2/2 p-2">
-                        <p className="bg-orange-500 text-white border border-red-500 inline-block py-0.6 px-2 text-[10px] rounded-2xl ">
-                          {tour.badge}
-                        </p>
+                        {tour.category?.badge && (
+                          <p className="bg-orange-500 text-white border border-red-500 inline-block py-0.6 px-2 text-[10px] rounded-2xl">
+                            {tour.tourType}
+                          </p>
+                        )}
                         <h3 className="font-bold text-lg">
-                          {tour.title.slice(0, 20)}...
+                          {tour.title.length > 20
+                            ? `${tour.title.slice(0, 20)}...`
+                            : tour.title}
                         </h3>
                         <div className="flex items-center text-yellow-500 text-sm my-2">
                           <FaStar />
@@ -350,64 +254,60 @@ const DiscoverWorld = () => {
                           <FaStar />
                           <FaStar />
                           <span className="ml-2 text-gray-600">
-                            {tour.reviews} Reviews
+                            {tour.metadata?.totalDepartures || 0} Reviews
                           </span>
                         </div>
 
                         {/* All Inclusive + Tooltip */}
-                        <div className="relative group inline-block mb-2">
-                          <p className="text-blue-600 text-sm cursor-pointer">
-                            ∞ All Inclusive
-                          </p>
-
-                          {/* Tooltip */}
-                          <div
-                            className="absolute -left-10 mt-2 hidden group-hover:block 
-                  w-64 bg-white text-gray-800 text-sm rounded-lg p-4 shadow-lg border border-gray-200 z-50"
-                          >
-                            <h4 className="font-semibold mb-3">
-                              Tour Includes
-                            </h4>
-
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                              <div className="flex items-center gap-2">
-                                <Building2 className="w-5 h-5" />
-                                <span>Hotel</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Cookie className="w-5 h-5" />
-                                <span>Meals</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <PlaneTakeoff className="w-5 h-5" />
-                                <span>Flight</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Camera className="w-5 h-5" />
-                                <span>Sightseeing</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Bus className="w-5 h-5" />
-                                <span>Transport</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <FaCcVisa className="w-5 h-5" />
-                                <span>Visa</span>
-                              </div>
-                              <div className="flex items-center gap-2 col-span-2">
-                                <User className="w-5 h-5" />
-                                <span>Tour Manager</span>
-                              </div>
-                            </div>
-
-                            {/* Extra Note */}
-                            <p className="text-red-600 text-xs mt-3">
-                              *Economy class air travel is included for all
-                              departure cities, except for joining/leaving
-                              points; Taxes Extra.
+                        {tour.tourIncludes && tour.tourIncludes.length > 0 && (
+                          <div className="relative group inline-block mb-2">
+                            <p className="text-blue-600 text-sm cursor-pointer">
+                              ∞ All Inclusive
                             </p>
+
+                            {/* Tooltip */}
+                            <div className="absolute -left-10 mt-2 hidden group-hover:block w-64 bg-white text-gray-800 text-sm rounded-lg p-4 shadow-lg border border-gray-200 z-50">
+                              <h4 className="font-semibold mb-3">
+                                Tour Includes
+                              </h4>
+
+                              <div className="grid grid-cols-2 gap-3 text-xs">
+                                {tour.tourIncludes
+                                  .filter(
+                                    (include) => include.status === "active",
+                                  )
+                                  .map((include) => (
+                                    <div
+                                      key={include._id}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <img
+                                        src={include.image}
+                                        alt={include.title}
+                                        className="w-5 h-5 object-cover rounded"
+                                      />
+                                      <span className="capitalize">
+                                        {include.title}
+                                      </span>
+                                    </div>
+                                  ))}
+                                {tour.tourManagerIncluded && (
+                                  <div className="flex items-center gap-2 col-span-2">
+                                    <User className="w-5 h-5" />
+                                    <span>Tour Manager</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Extra Note */}
+                              <p className="text-red-600 text-xs mt-3">
+                                *Economy class air travel is included for all
+                                departure cities, except for joining/leaving
+                                points; Taxes Extra.
+                              </p>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
 
@@ -419,17 +319,16 @@ const DiscoverWorld = () => {
                           <p className="text-black font-bold">{tour.days}</p>
                         </div>
                         <div className="text-xs">
-                          <p className="font-semibold">Destinations:</p>{" "}
+                          <p className="font-semibold">Destinations:</p>
                           <p className="text-blue-900 font-bold">
-                            {" "}
-                            {tour.destinations}
+                            {getStatesText(tour.states)}
                           </p>
                         </div>
                         <div className="text-xs">
-                          <p className="font-semibold">Departures:</p>{" "}
+                          <p className="font-semibold">Departures:</p>
                           <p className="text-blue-900 font-bold">
-                            {" "}
-                            {tour.departures}
+                            {tour.metadata?.displayText ||
+                              `${tour.metadata?.totalDepartures || 0} Dates`}
                           </p>
                         </div>
                       </div>
@@ -438,17 +337,18 @@ const DiscoverWorld = () => {
                         {/* Price */}
                         <div className="text-xs text-gray-600 mb-3 flex justify-between">
                           <div>
-                            <p>EMI from </p>
+                            <p>EMI from</p>
                             <span className="text-blue-600 font-bold">
-                              {tour.emi}
+                              ₹8,835/mo
                             </span>
                           </div>
                           <div>
                             <p>
                               Starts from{" "}
-                              <span className="font-bold">{tour.price}</span>
+                              <span className="font-bold">
+                                {formatPrice(tour.baseFullPackagePrice)}
+                              </span>
                             </p>
-
                             <p>per person on twin sharing</p>
                           </div>
                         </div>
@@ -456,13 +356,13 @@ const DiscoverWorld = () => {
                         {/* Buttons */}
                         <div className="flex justify-between gap-2">
                           <Link
-                            href="/tour-details"
+                            href={`/tour-details/${tour._id}`}
                             className="flex-1 border border-blue-600 text-center font-bold text-blue-600 px-2 py-2 rounded-md text-sm"
                           >
                             View Tour Details
                           </Link>
                           <Link
-                            href="/tour-details"
+                            href={`/tour-details/${tour._id}`}
                             className="flex-1 bg-red-700 text-center text-white font-bold px-2 py-2 rounded-md text-sm"
                           >
                             Book Online
@@ -479,12 +379,16 @@ const DiscoverWorld = () => {
           </Swiper>
 
           {/* Custom Nav Buttons */}
-          <button className="custom-prev absolute top-1/2 -left-3 z-10 -translate-y-1/2 bg-gray-200 p-2 rounded-full shadow hover:bg-gray-300 cursor-pointer">
-            ❮
-          </button>
-          <button className="custom-next absolute top-1/2 -right-3 z-10 -translate-y-1/2 bg-gray-200 p-2 rounded-full shadow hover:bg-gray-300 cursor-pointer">
-            ❯
-          </button>
+          {activePackages.length > 0 && (
+            <>
+              <button className="custom-prev absolute top-1/2 -left-3 z-10 -translate-y-1/2 bg-gray-200 p-2 rounded-full shadow hover:bg-gray-300 cursor-pointer">
+                ❮
+              </button>
+              <button className="custom-next absolute top-1/2 -right-3 z-10 -translate-y-1/2 bg-gray-200 p-2 rounded-full shadow hover:bg-gray-300 cursor-pointer">
+                ❯
+              </button>
+            </>
+          )}
         </div>
       </div>
     </section>

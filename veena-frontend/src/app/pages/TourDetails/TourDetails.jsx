@@ -36,6 +36,8 @@ import CancellationPolicy from "./CancellationPolicy";
 import Upgrades from "./Upgrades";
 import RightMap from "./RightMap";
 import TourReview from "@/app/components/TourReview";
+import { useParams } from "next/navigation";
+import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
 
 const TourDetails = () => {
   const breadcrumbItems = [
@@ -44,12 +46,69 @@ const TourDetails = () => {
     { label: "Search Holiday Package", href: null },
   ];
 
+  const { id: packageId } = useParams();
+  const {
+    data: tourPackage,
+    isLoading: tourPackageLoading,
+    error: tourPackageError,
+  } = useGetTourPackageQuery();
+
+  const packages = tourPackage?.data?.filter((item) => {
+    return item._id === packageId;
+  });
+
+  const tourData = packages?.[0];
+
+  console.log("packages", packages);
+
   const handleScroll = () => {
     const section = document.getElementById("departure-section");
     if (section) {
       section.scrollIntoView({ behavior: "smooth" });
     }
   };
+
+  // Loading state
+  if (tourPackageLoading) {
+    return <div className="text-center py-20">Loading tour details...</div>;
+  }
+
+  // Error state
+  if (tourPackageError || !tourData) {
+    return (
+      <div className="text-center py-20 text-red-500">
+        Tour not found or error loading details.
+      </div>
+    );
+  }
+
+  // Calculate total states and cities
+  const totalStates = tourData.states?.length || 0;
+  const totalCities =
+    tourData.metadata?.uniqueCities || tourData.cityDetails?.length || 0;
+
+  // Format route display
+  const routeDisplay =
+    tourData.states
+      ?.map((state) => {
+        const cities = state.cities?.join(", ") || "";
+        return `${state.name}: ${cities}`;
+      })
+      .join(" → ") ||
+    tourData.route ||
+    "Route information not available";
+
+  // Format city nights display
+  const cityNightsDisplay =
+    tourData.cityDetails
+      ?.map((city) => `${city.name} (${city.nights}N)`)
+      .join(" → ") || "";
+
+  // Calculate EMI
+  const basePrice =
+    tourData.baseJoiningPrice || tourData.baseFullPackagePrice || 0;
+  const emiAmount = Math.ceil(basePrice / 12);
+
   return (
     <>
       <Breadcrumb items={breadcrumbItems} />
@@ -62,8 +121,10 @@ const TourDetails = () => {
               <Image
                 width={600}
                 height={600}
-                src="/assets/img/tour-list/1.webp"
-                alt="Patan Modhera"
+                src={
+                  tourData.galleryImages?.[0] || "/assets/img/tour-list/1.webp"
+                }
+                alt={tourData.title}
                 className="w-full h-56 sm:h-72 md:h-80 lg:h-96 object-cover rounded-lg shadow cursor-pointer"
               />
               {/* Review Card */}
@@ -77,10 +138,10 @@ const TourDetails = () => {
               {/* Tour Info */}
               <div>
                 <span className="text-orange-500 border border-orange-500 text-[10px] px-2 py-1 rounded">
-                  GROUP TOUR
+                  {tourData.tourType?.toUpperCase() || "GROUP TOUR"}
                 </span>
                 <h1 className="text-xl sm:text-2xl font-bold mt-3 leading-snug">
-                  Patan Modhera with Statue of Unity
+                  {tourData.title}
                 </h1>
 
                 {/* Ratings */}
@@ -105,21 +166,22 @@ const TourDetails = () => {
                 <p className="mt-3 text-gray-900 flex flex-wrap items-center gap-4 text-sm">
                   <span className="flex items-center gap-1">
                     <CalendarDays className="w-4 h-4 text-black" />
-                    <strong>5 </strong>Days
+                    <strong>{tourData.days} </strong>Days
                   </span>
                   <span className="flex items-center gap-1">
                     <Map className="w-4 h-4 text-black" />
-                    <strong>1</strong> State
+                    <strong>{totalStates}</strong>{" "}
+                    {totalStates === 1 ? "State" : "States"}
                   </span>
                   <span className="flex items-center gap-1">
                     <Building2 className="w-4 h-4 text-black" />
-                    <strong>3</strong> Cities
+                    <strong>{totalCities}</strong>{" "}
+                    {totalCities === 1 ? "City" : "Cities"}
                   </span>
                 </p>
                 <p className="text-xs sm:text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-2">
                   <Map className="w-4 h-4 text-black" />
-                  <span className="font-semibold text-black">Gujarat</span>:
-                  Ahmedabad (2N) → Kevadia (2N) → Patan
+                  {cityNightsDisplay || routeDisplay}
                 </p>
 
                 <Link
@@ -155,26 +217,40 @@ const TourDetails = () => {
 
             {/* Why Travel Section */}
             <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-start gap-3">
-                <User className="w-8 h-8 text-yellow-500 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-base sm:text-lg mb-2">
-                    Heaven Holiday Tour Manager
-                  </h3>
-                  <p className="text-gray-600 text-xs sm:text-sm">
-                    This tour includes the services of Heaven Holiday’s Tour
-                    Manager...
-                  </p>
+              {tourData.tourManagerIncluded && (
+                <div className="flex items-start gap-3">
+                  <User className="w-8 h-8 text-yellow-500 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-base sm:text-lg mb-2">
+                      Heaven Holiday Tour Manager
+                    </h3>
+                    <div
+                      className="text-gray-600 text-xs sm:text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          tourData.tourManagerNote ||
+                          "This tour includes the services of Heaven Holiday's Tour Manager...",
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
                 <h3 className="font-semibold text-base sm:text-lg mb-2">
                   Why travel with Heaven Holiday
                 </h3>
                 <ul className="list-disc ml-5 text-gray-600 text-xs sm:text-sm space-y-1">
-                  <li>Expert tour manager all throughout the tour.</li>
-                  <li>All meals included in tour price.</li>
-                  <li>Music, fun and games every day.</li>
+                  {tourData.whyTravel && tourData.whyTravel.length > 0 ? (
+                    tourData.whyTravel.map((reason, index) => (
+                      <li key={index}>{reason}</li>
+                    ))
+                  ) : (
+                    <>
+                      <li>Expert tour manager all throughout the tour.</li>
+                      <li>All meals included in tour price.</li>
+                      <li>Music, fun and games every day.</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </div>
@@ -182,23 +258,27 @@ const TourDetails = () => {
 
           {/* Right Section - Booking Card */}
           <div className="bg-white shadow-lg rounded-lg border border-gray-200 p-5 w-full h-fit">
-            <TourGallery />
+            <TourGallery galleryImages={tourData.galleryImages} />
             <div className="border border-gray-200 rounded-lg p-4 shadow-sm bg-blue-50 mt-4">
               {/* Pricing Section */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className="text-black text-xs">
-                    Mumbai to Mumbai
+                    {tourData.departures?.[0]?.city || "Mumbai"} to{" "}
+                    {tourData.departures?.[0]?.city || "Mumbai"}
                     <br />
                     Starts from
                   </p>
-                  <p className="text-lg font-bold">₹30,000</p>
+                  <p className="text-lg font-bold">
+                    ₹{tourData.baseFullPackagePrice?.toLocaleString("en-IN")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-black text-xs">
                     All-inclusive tour from
                     <br />
-                    Mumbai to Mumbai
+                    {tourData.departures?.[0]?.city || "Mumbai"} to{" "}
+                    {tourData.departures?.[0]?.city || "Mumbai"}
                   </p>
                 </div>
               </div>
@@ -210,7 +290,9 @@ const TourDetails = () => {
                     <br />
                     Starts from
                   </p>
-                  <p className="text-lg font-semibold">₹18,000</p>
+                  <p className="text-lg font-semibold">
+                    ₹{tourData.baseJoiningPrice?.toLocaleString("en-IN")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-black text-xs">
@@ -236,7 +318,9 @@ const TourDetails = () => {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 rounded-md bg-gray-600 text-xs mt-2">
                 <span className="text-white text-center sm:text-left">
                   EMI start at{" "}
-                  <span className="font-semibold underline">₹1,012/mo</span>
+                  <span className="font-semibold underline">
+                    ₹{emiAmount.toLocaleString("en-IN")}/mo
+                  </span>
                 </span>
                 <PricingModal />
               </div>
@@ -245,30 +329,49 @@ const TourDetails = () => {
               <div className="mt-4">
                 <h4 className="text-xs font-semibold mb-2">Tour Includes</h4>
                 <div className="grid grid-cols-3 gap-4 text-xs text-gray-700">
-                  <div className="flex flex-col items-center">
-                    <Hotel className="w-5 h-5 mb-1 text-yellow-600" />
-                    Hotel
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <Utensils className="w-5 h-5 mb-1 text-yellow-600" />
-                    Meals
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <PlaneTakeoff className="w-5 h-5 mb-1 text-yellow-600" />
-                    Flight
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <Camera className="w-5 h-5 mb-1 text-yellow-600" />
-                    Sightseeing
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <Bus className="w-5 h-5 mb-1 text-yellow-600" />
-                    Transport
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <User2 className="w-5 h-5 mb-1 text-yellow-600" />
-                    Tour Manager
-                  </div>
+                  {tourData.tourIncludes && tourData.tourIncludes.length > 0 ? (
+                    tourData.tourIncludes.map((include, index) => (
+                      <div key={index} className="flex flex-col items-center">
+                        <Image
+                          src={include.image}
+                          alt={include.title}
+                          width={20}
+                          height={20}
+                          className="w-5 h-5 mb-1 object-cover"
+                        />
+                        {include.title}
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex flex-col items-center">
+                        <Hotel className="w-5 h-5 mb-1 text-yellow-600" />
+                        Hotel
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Utensils className="w-5 h-5 mb-1 text-yellow-600" />
+                        Meals
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <PlaneTakeoff className="w-5 h-5 mb-1 text-yellow-600" />
+                        Flight
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Camera className="w-5 h-5 mb-1 text-yellow-600" />
+                        Sightseeing
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <Bus className="w-5 h-5 mb-1 text-yellow-600" />
+                        Transport
+                      </div>
+                    </>
+                  )}
+                  {tourData.tourManagerIncluded && (
+                    <div className="flex flex-col items-center">
+                      <User2 className="w-5 h-5 mb-1 text-yellow-600" />
+                      Tour Manager
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -279,18 +382,18 @@ const TourDetails = () => {
         </div>
       </section>
 
-      <DepartureBooking />
+      <DepartureBooking tourData={tourData} />
       <StickyNavbar />
 
       <section className="py-10">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 relative">
-              <Itinerary />
-              <TourDetailsTabs />
-              <TourInformation />
-              <NeedToKnow />
-              <CancellationPolicy />
+              <Itinerary itinerary={tourData.itinerary} />
+              <TourDetailsTabs tourData={tourData} />
+              <TourInformation tourData={tourData} />
+              <NeedToKnow tourData={tourData} />
+              <CancellationPolicy tourData={tourData} />
               <Upgrades />
             </div>
             <div className="lg:col-span-1">

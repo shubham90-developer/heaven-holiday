@@ -2,6 +2,7 @@ import { Document, Types } from 'mongoose';
 import * as mongoose from 'mongoose';
 
 // ============= SUB-DOCUMENT INTERFACES =============
+
 export interface IFlight {
   fromCity: string;
   toCity: string;
@@ -20,9 +21,9 @@ export interface IAccommodation {
   checkOutDate?: Date;
 }
 export interface IReportingDropping {
-  guest_type: string;
-  reporting_Point: string;
-  dropping_Point: string;
+  guestType: string;
+  reportingPoint: string;
+  droppingPoint: string;
 }
 export interface IState {
   name: string;
@@ -42,6 +43,7 @@ export interface IItinerary {
 }
 // ============= NEW: DEPARTURE INTERFACE =============
 export interface IDeparture {
+  _id: Types.ObjectId;
   city: string;
   date: Date;
   fullPackagePrice: number;
@@ -98,6 +100,11 @@ export interface ITourPackageCard extends Document {
   flights: IFlight[];
   accommodations: IAccommodation[];
   reportingDropping: IReportingDropping[];
+  tourInclusions: string;
+  tourExclusions: string;
+  tourPrepartion: string;
+  needToKnow: string;
+  cancellationPolicy: string;
   createdAt: Date;
   updatedAt: Date;
 }

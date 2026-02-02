@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import { FaCcVisa, FaStar } from "react-icons/fa";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,165 +13,206 @@ import {
   User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-const toursData = {
-  Europe: [
-    {
-      id: 1,
-      img: "/assets/img/tour-card/1.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Splendours",
-      reviews: 40,
-      days: 10,
-      destinations: "10 Countries 16 Cities",
-      departures: "7 Dates",
-      emi: "₹8,835/mo",
-      price: "₹2,62,000",
-    },
-    {
-      id: 2,
-      img: "/assets/img/tour-card/2.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Panorama",
-      reviews: 22,
-      days: 8,
-      destinations: "8 Countries 12 Cities",
-      departures: "2 Dates",
-      emi: "₹8,363/mo",
-      price: "₹2,48,000",
-    },
-  ],
-  Japan: [
-    {
-      id: 3,
-      img: "/assets/img/tour-card/3.avif",
-      tag: "Durga Puja Spl.Departures",
-      badge: "GROUP Tour EUEP",
-      title: "European Wonders",
-      reviews: 39,
-      days: 13,
-      destinations: "11 Countries 21 Cities",
-      departures: "5 Dates",
-      emi: "₹10,858/mo",
-      price: "₹3,22,000",
-    },
-  ],
-};
+import {
+  useGetProfileQuery,
+  useRemoveFromWishlistMutation,
+} from "store/authApi/authApi";
+import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
+import { auth } from "@/app/config/firebase";
 
 const MyWishlistCards = () => {
   const router = useRouter();
 
-  // ✅ Flatten all tours from all categories
-  const allTours = Object.values(toursData).flat();
+  // Fetch user profile to get wishlist
+  const { data: profileData, isLoading: profileLoading } = useGetProfileQuery();
+
+  // Fetch all tour packages
+  const { data: tourPackageData, isLoading: packagesLoading } =
+    useGetTourPackageQuery();
+
+  // Remove from wishlist mutation
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
+
+  // Get wishlist package IDs from profile
+  const wishlistIds = useMemo(() => {
+    if (!profileData?.data?.user?.wishlist) return [];
+    // Remove duplicates using Set
+    return [...new Set(profileData.data.user.wishlist)];
+  }, [profileData]);
+
+  // Filter tour packages to only show those in wishlist
+  const wishlistPackages = useMemo(() => {
+    if (!tourPackageData?.data || wishlistIds.length === 0) return [];
+
+    return tourPackageData.data.filter(
+      (pkg) => wishlistIds.includes(pkg._id) && pkg.status === "Active",
+    );
+  }, [tourPackageData, wishlistIds]);
+
+  // Format price
+  const formatPrice = (price) => {
+    return `₹${price?.toLocaleString() || "0"}`;
+  };
+
+  // Get states text
+  const getStatesText = (states) => {
+    if (!states || states.length === 0) return "N/A";
+    const stateCount = states.length;
+    const cityCount = states.reduce(
+      (acc, state) => acc + (state.cities?.length || 0),
+      0,
+    );
+    return `${stateCount} State${stateCount > 1 ? "s" : ""} ${cityCount} Cities`;
+  };
+
+  // Handle remove from wishlist
+  const handleRemoveFromWishlist = async (packageId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const result = await removeFromWishlist({ packageId }).unwrap();
+
+      alert("Removed successfully!");
+    } catch (error) {
+      alert(error?.data?.message || "Failed to remove");
+    }
+  };
+
+  if (profileLoading || packagesLoading) {
+    return (
+      <section className="py-12 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <p className="text-center text-gray-500">Loading your wishlist...</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-12 bg-white">
       <div className="max-w-6xl mx-auto px-6">
         <div className="flex items-center justify-between mb-6">
           <p className="text-2xl font-semibold text-gray-800">My Wishlist</p>
+          {wishlistPackages.length > 0 && (
+            <p className="text-sm text-gray-600">
+              {wishlistPackages.length}{" "}
+              {wishlistPackages.length === 1 ? "package" : "packages"}
+            </p>
+          )}
         </div>
-        {allTours.length > 0 ? (
+
+        {wishlistPackages.length > 0 ? (
           <div className="grid md:grid-cols-2 gap-6">
-            {allTours.map((tour) => (
+            {wishlistPackages.map((tour) => (
               <div
-                key={tour.id}
+                key={tour._id}
                 className="border border-gray-300 rounded-lg shadow-sm bg-white overflow-hidden"
               >
                 <div className="flex flex-col sm:flex-row">
                   {/* Left Image */}
                   <div className="relative sm:w-1/2">
                     <Image
-                      src={tour.img}
+                      src={
+                        tour.category?.image || "/assets/img/tour-card/1.avif"
+                      }
                       alt={tour.title}
                       width={1000}
                       height={600}
                       className="w-full h-full object-cover rounded-lg p-2"
                     />
 
-                    {/* Wishlist Heart Icon */}
+                    {/* Wishlist Heart Icon - Filled to show it's in wishlist */}
                     <div className="absolute top-3 right-3 group">
                       <button
-                        className="p-2 bg-gray-400 rounded-full shadow hover:bg-gray-500 relative cursor-pointer"
-                        onClick={() => router.push("/wishlist")}
+                        className="p-2 bg-red-500 rounded-full shadow hover:bg-red-600 relative cursor-pointer"
+                        onClick={(e) => handleRemoveFromWishlist(tour._id, e)}
                       >
-                        <Heart className="w-4 h-4 text-white" />
+                        <Heart className="w-4 h-4 text-white fill-white" />
                       </button>
                       <div className="absolute top-full right-1/2 translate-x-1/2 mt-1 hidden group-hover:flex items-center justify-center bg-black text-white text-xs rounded px-2 py-1 shadow z-10 whitespace-nowrap">
-                        Add to Wishlist
+                        Remove from Wishlist
                       </div>
                     </div>
 
-                    {/* Tag */}
-                    <span className="absolute bottom-2 left-2 bg-orange-500 text-white text-[10px] px-2 py-1 rounded">
-                      {tour.tag.slice(0, 16)}...
-                    </span>
+                    {/* Badge */}
+                    {tour.badge && (
+                      <span className="absolute bottom-2 left-2 bg-orange-500 text-white text-[10px] px-2 py-1 rounded">
+                        {tour.badge.length > 16
+                          ? `${tour.badge.slice(0, 16)}...`
+                          : tour.badge}
+                      </span>
+                    )}
                   </div>
 
                   {/* Right Content */}
                   <div className="sm:w-1/2 p-3 flex flex-col justify-between">
                     <div>
-                      <p className="bg-orange-500 text-white inline-block py-0.5 px-2 text-[10px] rounded-2xl">
-                        {tour.badge}
-                      </p>
+                      {tour.tourType && (
+                        <p className="bg-orange-500 text-white inline-block py-0.5 px-2 text-[10px] rounded-2xl">
+                          {tour.tourType}
+                        </p>
+                      )}
                       <h3 className="font-bold text-lg mt-1 text-gray-800">
-                        {tour.title.slice(0, 25)}...
+                        {tour.title.length > 25
+                          ? `${tour.title.slice(0, 25)}...`
+                          : tour.title}
                       </h3>
                       <div className="flex items-center text-yellow-500 text-sm my-2">
                         {[...Array(5)].map((_, i) => (
                           <FaStar key={i} />
                         ))}
                         <span className="ml-2 text-gray-600">
-                          {tour.reviews} Reviews
+                          {tour.metadata?.totalDepartures || 0} Reviews
                         </span>
                       </div>
 
                       {/* All Inclusive */}
-                      <div className="relative group inline-block mb-2">
-                        <p className="text-blue-600 text-sm cursor-pointer">
-                          ∞ All Inclusive
-                        </p>
-
-                        <div className="absolute -left-10 mt-2 hidden group-hover:block w-64 bg-white text-gray-800 text-sm rounded-lg p-4 shadow-lg border border-gray-200 z-50">
-                          <h4 className="font-semibold mb-3">Tour Includes</h4>
-                          <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div className="flex items-center gap-2">
-                              <Building2 className="w-5 h-5" />
-                              <span>Hotel</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Cookie className="w-5 h-5" />
-                              <span>Meals</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <PlaneTakeoff className="w-5 h-5" />
-                              <span>Flight</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Camera className="w-5 h-5" />
-                              <span>Sightseeing</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Bus className="w-5 h-5" />
-                              <span>Transport</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <FaCcVisa className="w-5 h-5" />
-                              <span>Visa</span>
-                            </div>
-                            <div className="flex items-center gap-2 col-span-2">
-                              <User className="w-5 h-5" />
-                              <span>Tour Manager</span>
-                            </div>
-                          </div>
-                          <p className="text-red-600 text-xs mt-3">
-                            *Economy class air travel is included for all
-                            departure cities, except for joining/leaving points;
-                            Taxes Extra.
+                      {tour.tourIncludes && tour.tourIncludes.length > 0 && (
+                        <div className="relative group inline-block mb-2">
+                          <p className="text-blue-600 text-sm cursor-pointer">
+                            ∞ All Inclusive
                           </p>
+
+                          <div className="absolute -left-10 mt-2 hidden group-hover:block w-64 bg-white text-gray-800 text-sm rounded-lg p-4 shadow-lg border border-gray-200 z-50">
+                            <h4 className="font-semibold mb-3">
+                              Tour Includes
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              {tour.tourIncludes
+                                .filter(
+                                  (include) => include.status === "active",
+                                )
+                                .map((include) => (
+                                  <div
+                                    key={include._id}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <img
+                                      src={include.image}
+                                      alt={include.title}
+                                      className="w-5 h-5 object-cover rounded"
+                                    />
+                                    <span className="capitalize">
+                                      {include.title}
+                                    </span>
+                                  </div>
+                                ))}
+                              {tour.tourManagerIncluded && (
+                                <div className="flex items-center gap-2 col-span-2">
+                                  <User className="w-5 h-5" />
+                                  <span>Tour Manager</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-red-600 text-xs mt-3">
+                              *Economy class air travel is included for all
+                              departure cities, except for joining/leaving
+                              points; Taxes Extra.
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -181,18 +222,21 @@ const MyWishlistCards = () => {
                   <div className="text-sm text-gray-600 flex justify-between mb-4">
                     <div>
                       <p className="font-semibold text-xs">Days:</p>
-                      <p className="text-black font-bold">{tour.days}</p>
+                      <p className="text-black font-bold">
+                        {tour.days || "N/A"}
+                      </p>
                     </div>
                     <div>
                       <p className="font-semibold text-xs">Destinations:</p>
                       <p className="text-blue-900 font-bold">
-                        {tour.destinations}
+                        {getStatesText(tour.states)}
                       </p>
                     </div>
                     <div>
                       <p className="font-semibold text-xs">Departures:</p>
                       <p className="text-blue-900 font-bold">
-                        {tour.departures}
+                        {tour.metadata?.displayText ||
+                          `${tour.metadata?.totalDepartures || 0} Dates`}
                       </p>
                     </div>
                   </div>
@@ -202,13 +246,15 @@ const MyWishlistCards = () => {
                       <div>
                         <p>EMI from </p>
                         <span className="text-blue-600 font-bold">
-                          {tour.emi}
+                          ₹8,835/mo
                         </span>
                       </div>
                       <div>
                         <p>
                           Starts from{" "}
-                          <span className="font-bold">{tour.price}</span>
+                          <span className="font-bold">
+                            {formatPrice(tour.baseFullPackagePrice)}
+                          </span>
                         </p>
                         <p>per person on twin sharing</p>
                       </div>
@@ -216,13 +262,13 @@ const MyWishlistCards = () => {
 
                     <div className="flex justify-between gap-2">
                       <Link
-                        href="/tour-details"
+                        href={`/tour-details/${tour._id}`}
                         className="flex-1 border border-blue-600 text-center font-bold text-blue-600 px-2 py-2 rounded-md text-sm"
                       >
                         View Tour Details
                       </Link>
                       <Link
-                        href="/tour-details"
+                        href={`/tour-details/${tour._id}`}
                         className="flex-1 bg-red-700 text-center text-white font-bold px-2 py-2 rounded-md text-sm"
                       >
                         Book Online
@@ -234,7 +280,19 @@ const MyWishlistCards = () => {
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-500">No tours available.</p>
+          <div className="text-center py-12">
+            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg mb-2">Your wishlist is empty</p>
+            <p className="text-gray-400 text-sm mb-6">
+              Start adding tour packages to your wishlist to see them here
+            </p>
+            <Link
+              href="/"
+              className="inline-block bg-blue-900 text-white px-6 py-2 rounded-md hover:bg-blue-800 transition"
+            >
+              Explore Tours
+            </Link>
+          </div>
         )}
       </div>
     </section>

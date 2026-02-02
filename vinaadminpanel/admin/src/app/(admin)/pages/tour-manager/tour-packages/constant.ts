@@ -6,17 +6,6 @@ export const TOUR_TYPES = [
   "Luxury Tour",
   "Budget Tour",
 ];
-export const DEPARTURE_CITIES = [
-  "Mumbai",
-  "Delhi",
-  "Bangalore",
-  "Hyderabad",
-  "Chennai",
-  "Kolkata",
-  "Pune",
-  "Ahmedabad",
-  "Jaipur",
-];
 
 export const modules = {
   toolbar: [

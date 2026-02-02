@@ -1,107 +1,133 @@
-import mongoose, { Document, Schema } from "mongoose";
-import bcrypt from "bcrypt";
+import mongoose, { Schema } from 'mongoose';
 
-const MenuBookmarkSchema = new Schema(
-  {
-    menuItemId: {
-      type: String,
-      required: true,
-    },
-    hotelId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Hotel",
-      required: true,
-    },
-    hotelName: {
-      type: String,
-      required: true,
-    },
-
-    menuTitle: {
-      type: String,
-      required: true,
-    },
-    menuImage: {
-      type: String,
-      required: true,
-    },
-    menuPrice: {
-      type: Number,
-      required: true,
-    },
-    bookmarkedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
-export interface IUser extends Document {
-  name: string;
-  img: string;
-  password: string;
-  phone: string;
-  email: string;
-  role: "admin" | "vendor" | "user";
-  googleId?: string;
-  authProvider?: "local" | "google";
-  otp?: string;
-  otpExpires?: Date;
-  packageFeatures?: string[];
-  menuBookmarks?: (typeof MenuBookmarkSchema)[];
-  comparePassword(password: string): Promise<boolean>;
-  compareOtp(otp: string): boolean;
-}
+import { IUser } from './authInterface';
 
 const userSchema: Schema = new Schema(
   {
-    name: { type: String },
-    password: { type: String },
-    phone: { type: String }, // Optional - required for local auth, optional for Google
-    email: { type: String },
-    img: { type: String },
-    role: { type: String, enum: ["admin", "vendor", "user"], default: "user" },
-    status: { type: String, enum: ["pending", "active"], default: "active" },
-    googleId: { type: String },
-    authProvider: { type: String, enum: ["local", "google"], default: "local" },
-    otp: { type: String },
-    otpExpires: { type: Date },
-
-    packageFeatures: {
-      type: [String],
-      default: [],
+    firebaseUid: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ['phone', 'google', 'email'],
+      default: 'phone',
     },
 
-    menuBookmarks: {
-      type: [MenuBookmarkSchema],
-      default: [],
+    profileImg: {
+      type: String,
     },
+    name: {
+      type: String,
+
+      trim: true,
+    },
+    email: {
+      type: String,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    phone: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other'],
+    },
+    nationality: {
+      type: String,
+      default: 'Indian',
+    },
+    dateOfBirth: {
+      type: Date,
+    },
+
+    address: {
+      address: { type: String },
+    },
+
+    aadharCard: {
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    panCard: {
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    passport: {
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    voterId: {
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    birthCertificate: {
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    drivingLicense: {
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    visa: {
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    otherDocument: {
+      documentName: { type: String },
+
+      frontImage: { type: String },
+      backImage: { type: String },
+    },
+
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      default: 'user',
+    },
+    accountStatus: {
+      type: String,
+      enum: ['active', 'inactive', 'pending'],
+      default: 'pending',
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TourPackageCard',
+      },
+    ],
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  },
 );
 
-userSchema.pre<IUser>("save", async function (next) {
-  if (!this.isModified("password")) {
-    return next();
-  }
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
+userSchema.index({ firebaseUid: 1 }, { unique: true });
+userSchema.index({ email: 1 });
+userSchema.index({ phone: 1 });
 
-userSchema.methods.comparePassword = async function (
-  password: string
-): Promise<boolean> {
-  return bcrypt.compare(password, this.password);
-};
-
-// Add method to compare OTP
-userSchema.methods.compareOtp = function (otp: string): boolean {
-  return this.otp === otp && this.otpExpires && this.otpExpires > new Date();
-};
-
-// Add index for phone
-userSchema.index({ phone: 1 }, { unique: true });
-
-export const User = mongoose.model<IUser>("User", userSchema);
+export const User = mongoose.model<IUser>('User', userSchema);

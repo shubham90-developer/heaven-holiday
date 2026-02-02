@@ -134,7 +134,6 @@ export default function BookingTabs() {
 
   const bookingData = onlineBooking?.data;
   const steps = bookingData?.steps || [];
-  console.log(counter);
 
   return (
     <div className="w-full text-gray-800">

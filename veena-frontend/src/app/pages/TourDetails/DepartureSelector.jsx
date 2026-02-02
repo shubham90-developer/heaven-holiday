@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 
 // Modal Component
 const Modal = ({ isOpen, onClose, children }) => {
@@ -20,118 +20,89 @@ const Modal = ({ isOpen, onClose, children }) => {
   );
 };
 
-const DepartureSelector = () => {
+const DepartureSelector = ({ departures = [], onDateSelect }) => {
   const [activeTab, setActiveTab] = useState("All departures");
   const [selectedDate, setSelectedDate] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState("");
 
-  // Data grouped by month, with city tags
-  const months = [
-    {
-      name: "Sep 2025",
-      dates: [
-        {
-          day: "28",
-          weekday: "SUN",
-          price: "₹32,000",
-          label: "Only J/L available",
-          status: "red",
-          city: "Joining / Leaving",
-        },
-      ],
-    },
-    {
-      name: "Oct 2025",
-      dates: [
-        {
-          day: "14",
-          weekday: "TUE",
-          price: "₹33,000",
-          status: "gray",
-          city: "Mumbai",
-        },
-        {
-          day: "18",
-          weekday: "SAT",
-          price: "₹34,000",
-          label: "On - Tour Diwali",
-          status: "purple",
-          city: "Mumbai",
-        },
-        {
-          day: "22",
-          weekday: "WED",
-          price: "₹34,000",
-          label: "On - Tour Diwali",
-          status: "purple",
-          city: "Joining / Leaving",
-        },
-        {
-          day: "26",
-          weekday: "SUN",
-          price: "₹35,000",
-          label: "Diwali Special",
-          status: "purple",
-          city: "Mumbai",
-        },
-      ],
-    },
-    {
-      name: "Nov 2025",
-      dates: [
-        {
-          day: "02",
-          weekday: "SUN",
-          price: "₹32,000",
-          label: "3 seats",
-          status: "red",
-          city: "Joining / Leaving",
-        },
-        {
-          day: "28",
-          weekday: "FRI",
-          price: "₹30,000",
-          label: "Lowest Price",
-          status: "green",
-          city: "Mumbai",
-        },
-      ],
-    },
-    {
-      name: "Dec 2025",
-      dates: [
-        {
-          day: "19",
-          weekday: "FRI",
-          price: "₹34,000",
-          status: "gray",
-          city: "Mumbai",
-        },
-        {
-          day: "23",
-          weekday: "TUE",
-          price: "₹35,000",
-          status: "gray",
-          city: "Joining / Leaving",
-        },
-        {
-          day: "31",
-          weekday: "WED",
-          price: "₹36,000",
-          label: "New Year",
-          status: "purple",
-          city: "Mumbai",
-        },
-      ],
-    },
-  ];
+  // Get unique cities from departures
+  const uniqueCities = useMemo(() => {
+    if (!departures || departures.length === 0) return [];
+    const cities = [...new Set(departures.map((d) => d.city))];
+    return cities;
+  }, [departures]);
+
+  // Format date for display
+  const formatDateInfo = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString();
+    const weekday = date
+      .toLocaleDateString("en-US", { weekday: "short" })
+      .toUpperCase();
+    const month = date.toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+    return { day, weekday, month };
+  };
+
+  // Group departures by month
+  const groupedDepartures = useMemo(() => {
+    if (!departures || departures.length === 0) return [];
+
+    const grouped = {};
+
+    departures.forEach((departure) => {
+      const { month } = formatDateInfo(departure.date);
+
+      if (!grouped[month]) {
+        grouped[month] = [];
+      }
+
+      const { day, weekday } = formatDateInfo(departure.date);
+
+      // Determine status based on available seats
+      let status = "gray";
+      let label = "";
+
+      if (departure.availableSeats <= 5) {
+        status = "red";
+        label = `${departure.availableSeats} seats`;
+      } else if (
+        departure.joiningPrice ===
+        Math.min(...departures.map((d) => d.joiningPrice))
+      ) {
+        status = "green";
+        label = "Lowest Price";
+      }
+
+      grouped[month].push({
+        day,
+        weekday,
+        price: `₹${departure.joiningPrice?.toLocaleString("en-IN")}`,
+        fullPackagePrice: `₹${departure.fullPackagePrice?.toLocaleString("en-IN")}`,
+        label,
+        status,
+        city: departure.city,
+        availableSeats: departure.availableSeats,
+        totalSeats: departure.totalSeats,
+        originalDate: departure.date,
+        departureData: departure, // ✅ Full departure object stored here
+      });
+    });
+
+    return Object.entries(grouped).map(([month, dates]) => ({
+      name: month,
+      dates,
+    }));
+  }, [departures]);
 
   // Filter based on tab
   const getFilteredMonths = () => {
-    if (activeTab === "All departures") return months;
+    if (activeTab === "All departures") return groupedDepartures;
 
-    return months
+    return groupedDepartures
       .map((month) => ({
         ...month,
         dates: month.dates.filter((date) => date.city === activeTab),
@@ -141,22 +112,57 @@ const DepartureSelector = () => {
 
   const handleTabClick = (tabName) => {
     setActiveTab(tabName);
-    setSelectedDate(null); // reset selected date when changing tab
+    setSelectedDate(null);
   };
 
   const handleDateClick = (date) => {
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("DepartureSelector - Date clicked");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("Date object:", date);
+    console.log("departureData:", date.departureData);
+    console.log("departureData._id:", date.departureData?._id);
+    console.log("departureData.date:", date.departureData?.date);
+
     setSelectedDate(date);
     setIsModalOpen(true);
+
+    // ✅ FIXED: Pass the full departure object with _id
+    if (onDateSelect && date.departureData) {
+      onDateSelect(date.departureData);
+    }
   };
 
   const handleProceed = () => {
-    if (selectedCity) {
-      alert(
-        `You selected ${selectedCity} for ${selectedDate.weekday}, ${selectedDate.day}`
-      );
+    if (selectedCity && selectedDate) {
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("Proceed clicked - Final selection");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("Selected City:", selectedCity);
+      console.log("Departure Data:", selectedDate.departureData);
+
+      // ✅ FIXED: Pass the full departure object
+      if (onDateSelect && selectedDate.departureData) {
+        onDateSelect(selectedDate.departureData);
+      }
+
       setIsModalOpen(false);
     }
   };
+
+  // If no departures data, show fallback
+  if (!departures || departures.length === 0) {
+    return (
+      <div className="bg-white p-4 rounded-lg shadow-md w-full md:col-span-2">
+        <h2 className="font-semibold text-lg mb-2 border-b pb-2">
+          1. SELECT DEPARTURE CITY & DATE
+        </h2>
+        <p className="text-gray-500 text-center py-8">
+          No departure dates available at the moment.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -169,17 +175,27 @@ const DepartureSelector = () => {
         </h2>
         {/* Tabs */}
         <div className="flex gap-3 my-4">
-          {["All departures", "Mumbai", "Joining / Leaving"].map((tab) => (
+          <button
+            onClick={() => handleTabClick("All departures")}
+            className={`px-4 py-2 rounded-full border cursor-pointer text-xs ${
+              activeTab === "All departures"
+                ? "bg-blue-900 text-white cursor-pointer border-blue-600"
+                : "border-gray-300 bg-white text-gray-700"
+            }`}
+          >
+            All departures
+          </button>
+          {uniqueCities.map((city) => (
             <button
-              key={tab}
-              onClick={() => handleTabClick(tab)}
+              key={city}
+              onClick={() => handleTabClick(city)}
               className={`px-4 py-2 rounded-full border cursor-pointer text-xs ${
-                activeTab === tab
+                activeTab === city
                   ? "bg-blue-900 text-white cursor-pointer border-blue-600"
                   : "border-gray-300 bg-white text-gray-700"
               }`}
             >
-              {tab}
+              {city}
             </button>
           ))}
         </div>
@@ -208,20 +224,21 @@ const DepartureSelector = () => {
                     key={j}
                     onClick={() => handleDateClick(date)}
                     className={`w-24 text-center rounded-lg p-2 cursor-pointer border transition ${
-                      selectedDate?.day === date.day
+                      selectedDate?.day === date.day &&
+                      selectedDate?.month === month.name
                         ? "border-blue-600 ring-2 ring-blue-400"
                         : "border-gray-300 hover:border-blue-400"
                     } ${
                       date.status === "green"
                         ? "bg-green-100"
                         : date.status === "red"
-                        ? "bg-red-50"
-                        : date.status === "purple"
-                        ? "bg-purple-50"
-                        : "bg-white"
+                          ? "bg-red-50"
+                          : date.status === "purple"
+                            ? "bg-purple-50"
+                            : "bg-white"
                     }`}
                   >
-                    <div className="text-[10px] text-gray-800  border-b py-1">
+                    <div className="text-[10px] text-gray-800 border-b py-1">
                       {date.weekday}
                     </div>
                     <div className="text-sm font-bold">{date.day}</div>
@@ -232,10 +249,10 @@ const DepartureSelector = () => {
                           date.status === "red"
                             ? "text-red-500"
                             : date.status === "green"
-                            ? "text-green-600"
-                            : date.status === "purple"
-                            ? "text-purple-600"
-                            : "text-gray-400"
+                              ? "text-green-600"
+                              : date.status === "purple"
+                                ? "text-purple-600"
+                                : "text-gray-400"
                         }`}
                       >
                         {date.label}
@@ -267,28 +284,22 @@ const DepartureSelector = () => {
         </h3>
 
         <div className="space-y-3 mb-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="city"
-              value="Mumbai"
-              checked={selectedCity === "Mumbai"}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="h-4 w-4"
-            />
-            <span>Mumbai</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="city"
-              value="Join at Srinagar, Leave at Srinagar"
-              checked={selectedCity === "Join at Srinagar, Leave at Srinagar"}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="h-4 w-4"
-            />
-            <span>Join at Srinagar, Leave at Srinagar</span>
-          </label>
+          {uniqueCities.map((city) => (
+            <label
+              key={city}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <input
+                type="radio"
+                name="city"
+                value={city}
+                checked={selectedCity === city}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="h-4 w-4"
+              />
+              <span>{city}</span>
+            </label>
+          ))}
         </div>
 
         <div className="bg-blue-50 text-gray-700 text-sm p-2 rounded mb-4">

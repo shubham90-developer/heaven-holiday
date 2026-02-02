@@ -2,35 +2,36 @@
 import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 
-const TourInformation = () => {
+const TourInformation = ({ tourData }) => {
   const [activeTab, setActiveTab] = useState("inclusions");
 
-  const inclusions = [
-    "To and fro economy class air travel for ‘Mumbai to Mumbai Tour’ guests as mentioned in the itinerary",
-    "Airfare, Airport taxes and Visa Fees",
-    "Baggage Allowance as per the airline policy",
-    "Tour Manager Services throughout the tour",
-    "Travel by comfortable A/C coach as per the tour itinerary",
-    "Entrance fees of all sightseeing places to be visited from inside",
-    "Accommodation in comfortable and convenient hotels on twin sharing basis",
-    "All Meals – Breakfast, Lunch, Dinner (set menu) as mentioned in the itinerary",
-    "All Tips – Guide, Driver & Restaurants",
-    "Cost of internal airfare as mentioned in the itinerary",
-  ];
+  // Helper function to parse HTML content and extract list items
+  const parseHTMLToList = (htmlString) => {
+    if (!htmlString) return [];
 
-  const exclusions = [
-    "Any increase in airfare, visa fees, airport taxes, government taxes, fuel surcharges, etc.",
-    "Expenses of personal nature such as porterage, laundry, telephone, drinks, etc.",
-    "Cost of insurance, if not mentioned in inclusions",
-    "Any services not mentioned under inclusions",
-  ];
+    // Create a temporary div to parse HTML
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = htmlString;
 
-  const preparation = [
-    "Carry valid passport with at least 6 months validity",
-    "Pack according to the weather of your destination",
-    "Carry required medicines and personal items",
-    "Keep both hard copy and digital copy of travel documents",
-  ];
+    // Extract text from li elements
+    const listItems = tempDiv.querySelectorAll("li");
+    const items = Array.from(listItems).map((li) => li.textContent.trim());
+
+    return items.length > 0 ? items : [];
+  };
+
+  // Get data from tourData or use defaults
+  const inclusions = tourData?.tourInclusions
+    ? parseHTMLToList(tourData.tourInclusions)
+    : [];
+
+  const exclusions = tourData?.tourExclusions
+    ? parseHTMLToList(tourData.tourExclusions)
+    : [];
+
+  const preparation = tourData?.tourPrepartion
+    ? parseHTMLToList(tourData.tourPrepartion)
+    : [];
 
   const renderList = (items) => (
     <ul className="space-y-3">

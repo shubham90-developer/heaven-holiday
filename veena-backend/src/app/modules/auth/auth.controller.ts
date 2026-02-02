@@ -1,860 +1,524 @@
-import { Request, Response } from "express";
-import { User } from "./auth.model";
-import { RequestHandler } from 'express';
-import { activateUserValidation, authValidation, emailCheckValidation, loginValidation, phoneCheckValidation, requestOtpValidation, resetPasswordValidation, updateUserValidation, verifyOtpValidation, changePasswordValidation, updateProfileValidation, requestResetEmailValidation, confirmResetEmailValidation } from "./auth.validation";
-import { generateToken } from "../../config/generateToken";
-import { sendMail } from '../../services/mailService';
-import { firebaseAuth } from '../../config/firebase';
-// import { AdminStaff } from "../admin-staff/admin-staff.model";
-
-export const singUpController: RequestHandler = async (req, res, next): Promise<void> => {
+import { NextFunction, Response } from 'express';
+import { User } from './auth.model';
+import { AuthRequest } from '../../middlewares/firebaseAuth';
+import { appError } from '../../errors/appError';
+import { cloudinary } from '../../config/cloudinary';
+import { TourPackageCard } from '../tourPackage/tourPackageModel';
+// Step 1: Verify Phone & Create User (After Firebase OTP Verification)
+export const verifyPhoneAndRegister = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const { name, password, img, phone, email, role } = authValidation.parse(req.body);
+    const { firebaseUid } = req.user!;
+    const { phone } = req.body;
 
-    // Check for existing email
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
-      res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "Email already exists",
-      });
-      return;
+    if (!phone) {
+      return next(new appError('Phone number is required', 400));
     }
-    
-    
-    
-    
-    
-    
 
-    // Check for existing phone
-    const existingPhone = await User.findOne({ phone });
-    if (existingPhone) {
-      res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "Phone number already exists",
+    // Check if user already exists
+    let user = await User.findOne({ firebaseUid });
+
+    if (user) {
+      // User already exists - LOGIN
+      res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: 'Login successful',
+        data: {
+          user,
+          isNewUser: false,
+          requiresProfileCompletion: !user.name || !user.email,
+        },
       });
       return;
     }
 
-
-    const user = new User({ name, password, img, phone, email, role });
-    await user.save();
-
-    const { password: _, ...userObject } = user.toObject();
+    // Create new user with ONLY phone number
+    user = await User.create({
+      firebaseUid,
+      phone,
+      phoneVerified: true,
+      authProvider: 'phone',
+      accountStatus: 'pending',
+      name: '',
+      email: '',
+    });
 
     res.status(201).json({
       success: true,
-      statusCode: 200,
-      message: "User registered successfully",
-      data: userObject,
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({ 
-      success: false, 
-      statusCode: 500, 
-      message: error.message 
-    });
-  }
-};
-
-// Request password reset via email (send OTP)
-export const requestResetPasswordEmail: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { email } = requestResetEmailValidation.parse(req.body)
-
-    const user = await User.findOne({ email })
-    if (!user) {
-      res.status(404).json({ success: false, statusCode: 404, message: 'Email not found' })
-      return
-    }
-
-    const otp = generateOTP()
-    user.otp = otp
-    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000) // 10 min
-    await user.save()
-
-    // Send OTP email
-    await sendMail({
-      to: email,
-      subject: 'Password Reset Code',
-      html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
-  <h2 style="margin:0 0 12px">Reset your password</h2>
-  <p style="margin:0 0 16px">Use the following code to reset your password. This code expires in 10 minutes.</p>
-  <div style="font-size:32px;font-weight:700;letter-spacing:4px;background:#f5f5f5;padding:12px 16px;border-radius:8px;text-align:center">${otp}</div>
-  <p style="color:#666;margin-top:16px">If you did not request this, you can ignore this email.</p>
-</div>`
-    })
-
-    res.json({ success: true, statusCode: 200, message: 'Reset code sent to email' })
-    return
-  } catch (error: any) {
-    res.status(400).json({ success: false, statusCode: 400, message: error.message })
-    return
-  }
-}
-
-// Confirm email OTP and reset password
-export const confirmResetPasswordEmail: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { email, otp, newPassword } = confirmResetEmailValidation.parse(req.body)
-
-    const user = await User.findOne({ email })
-    if (!user) {
-      res.status(404).json({ success: false, statusCode: 404, message: 'User not found' })
-      return
-    }
-
-    if (!user.compareOtp(otp)) {
-      res.status(401).json({ success: false, statusCode: 401, message: 'Invalid or expired OTP' })
-      return
-    }
-
-    user.password = newPassword
-    user.otp = undefined
-    user.otpExpires = undefined
-    await user.save()
-
-    res.json({ success: true, statusCode: 200, message: 'Password reset successfully' })
-    return
-  } catch (error: any) {
-    res.status(400).json({ success: false, statusCode: 400, message: error.message })
-    return
-  }
-}
-
-
-// Add these functions to your existing controller file
-
-// Utility function to generate OTP
-const generateOTP = (): string => {
-  return Math.floor(1000 + Math.random() * 9000).toString();
-};
-
-// Request OTP handler
-export const requestOtp: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { phone } = requestOtpValidation.parse(req.body);
-
-    // Find or create user
-    let user = await User.findOne({ phone });
-    
-    if (!user) {
-      user = new User({
-        phone,
-        role: 'user',
-        status: 'active'
-      });
-    }
-
-    // Generate OTP and set expiration
-    const otp = generateOTP();
-    user.otp = otp;
-    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
-    
-    await user.save();
-    
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "OTP sent successfully",
-      data: { 
-        otp,
-        phone 
-      }
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-  }
-};
-
-
-// Verify OTP and login
-export const verifyOtp: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { phone, otp } = verifyOtpValidation.parse(req.body);
-    
-    // Find user by phone
-    const user = await User.findOne({ phone });
-    
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found"
-      });
-      return;
-    }
-    
-    // Check if OTP is valid and not expired
-    if (!user.compareOtp(otp)) {
-      res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Invalid or expired OTP"
-      });
-      return;
-    }
-    
-    // Generate token for the user
-    const token = generateToken(user);
-    
-    // Clear OTP after successful verification
-    user.otp = undefined;
-    user.otpExpires = undefined;
-    await user.save();
-    
-    // Remove password from response
-    const { password: _, ...userObject } = user.toObject();
-    
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "OTP verified successfully",
-      token,
-      data: userObject
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-  }
-};
-
-
-export const updateUser: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    // Create a clean request body by filtering out undefined/null values
-    const cleanBody = Object.fromEntries(
-      Object.entries(req.body).filter(([_, v]) => v !== undefined && v !== null)
-    );
-    
-    // Validate the clean data
-    const validatedData = updateUserValidation.parse(cleanBody);
-    
-    // Check if email is being updated with a non-empty value and if it already exists
-    if (validatedData.email && validatedData.email.length > 0) {
-      const existingUser = await User.findOne({
-        email: validatedData.email,
-        _id: { $ne: req.params.id }
-      });
-      
-      if (existingUser) {
-        res.status(400).json({
-          success: false,
-          statusCode: 400,
-          message: "Email already exists"
-        });
-        return;
-      }
-    }
-    
-    // If email is empty string, remove it from update data
-    if (validatedData.email === '') {
-      delete validatedData.email;
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      validatedData,
-      { new: true, select: '-password' }
-    );
-
-    if (!updatedUser) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found"
-      });
-      return;
-    }
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "User updated successfully",
-      data: updatedUser
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-  }
-};
-
-
-export const loginController: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { email, password } = loginValidation.parse(req.body);
-
-    // First try to find in User model
-    let user = await User.findOne({ email });
-    let userType = 'user';
-    
-    // If not found in User model, try AdminStaff model
-    // if (!user) {
-    //   user = await AdminStaff.findOne({ email });
-    //   userType = 'admin-staff';
-    // }
-    
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        statusCode: 400,
-        message: "Invalid email or password",
-      });
-      return;
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      res.status(401).json({
-        success: false,
-        statusCode: 400,
-        message: "Invalid email or password",
-      });
-      return;
-    }
-
-
-
-    const token = generateToken(user);
-
-    // remove password
-    const { password: _, ...userObject } = user.toObject();
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "User logged in successfully",
-      token,
-      data: userObject,
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({ 
-      success: false, 
-      statusCode: 400, 
-      message: error.message 
-    });
-    return;
-  }
-};
-
-export const getAllUsers: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const users = await User.find({}, { password: 0 });
-    
-    if (users.length === 0) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "No users found",
-      });
-      return;
-    }
-    
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Users retrieved successfully",
-      data: users,
-    });
-    return;
-  } catch (error: any) {
-    res.status(500).json({ 
-      success: false, 
-      statusCode: 500, 
-      message: error.message 
-    });
-    return;
-  }
-};
-
-export const getUserById: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const user = await User.findById(req.params.id, { password: 0 });
-    
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found",
-      });
-      return;
-    }
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "User retrieved successfully",
-      data: user,
-    });
-    return;
-  } catch (error: any) {
-    res.status(500).json({ 
-      success: false, 
-      statusCode: 500, 
-      message: error.message 
-    });
-    return;
-  }
-};
-
-export const resetPassword: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { phone, newPassword } = resetPasswordValidation.parse(req.body);
-    
-    const user = await User.findOne({ phone });
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found"
-      });
-      return;
-    }
-
-    user.password = newPassword;
-    await user.save();
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Password reset successfully"
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-    return;
-  }
-};
-
-export const activateUser: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { phone } = activateUserValidation.parse(req.body);
-    
-    const user = await User.findOne({ phone });
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found"
-      });
-      return;
-    }
-
-    (user as any).status = 'active';
-    await user.save();
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "User activated successfully"
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-    return;
-  }
-};
-
-export const checkPhoneExists: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { phone } = phoneCheckValidation.parse(req.body);
-    
-    const user = await User.findOne({ phone });
-    
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "Phone number not found"
-      });
-      return;
-    }
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Phone number exists",
+      statusCode: 201,
+      message: 'Phone verified successfully. Please complete your profile.',
       data: {
-        exists: true,
-        phone: user.phone
-      }
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-    return;
-  }
-};
-
-export const checkEmailExists: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { email } = emailCheckValidation.parse(req.body);
-    
-    const user = await User.findOne({ email });
-    
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "Email not found"
-      });
-      return;
-    }
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Email exists",
-      data: {
-        exists: true,
-        email: user.email
-      }
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-    return;
-  }
-};
-
-// Get current user profile
-export const getMyProfile: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const userId = (req as any).user?.id;
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Unauthorized"
-      });
-      return;
-    }
-
-    const user = await User.findById(userId, { password: 0, otp: 0, otpExpires: 0 });
-
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found"
-      });
-      return;
-    }
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Profile retrieved successfully",
-      data: user
-    });
-    return;
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message
-    });
-    return;
-  }
-};
-
-// Update current user profile
-export const updateMyProfile: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const userId = (req as any).user?.id;
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Unauthorized"
-      });
-      return;
-    }
-
-    const cleanBody = Object.fromEntries(
-      Object.entries(req.body).filter(([_, v]) => v !== undefined && v !== null)
-    );
-
-    const validatedData = updateProfileValidation.parse(cleanBody);
-
-    // Check if email is being updated and if it already exists
-    if (validatedData.email && validatedData.email.length > 0) {
-      const existingUser = await User.findOne({
-        email: validatedData.email,
-        _id: { $ne: userId }
-      });
-
-      if (existingUser) {
-        res.status(400).json({
-          success: false,
-          statusCode: 400,
-          message: "Email already exists"
-        });
-        return;
-      }
-    }
-
-    // Check if phone is being updated and if it already exists
-    if (validatedData.phone) {
-      const existingUser = await User.findOne({
-        phone: validatedData.phone,
-        _id: { $ne: userId }
-      });
-
-      if (existingUser) {
-        res.status(400).json({
-          success: false,
-          statusCode: 400,
-          message: "Phone number already exists"
-        });
-        return;
-      }
-    }
-
-    // Remove empty email
-    if (validatedData.email === '') {
-      delete validatedData.email;
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      validatedData,
-      { new: true, select: '-password -otp -otpExpires' }
-    );
-
-    if (!updatedUser) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found"
-      });
-      return;
-    }
-
-    // Generate new token with updated user data
-    const token = generateToken(updatedUser);
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Profile updated successfully",
-      token,
-      data: updatedUser
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-    return;
-  }
-};
-
-// Change password
-export const changePassword: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const userId = (req as any).user?.id;
-
-    if (!userId) {
-      res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Unauthorized"
-      });
-      return;
-    }
-
-    const { currentPassword, newPassword } = changePasswordValidation.parse(req.body);
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        statusCode: 404,
-        message: "User not found"
-      });
-      return;
-    }
-
-    // Verify current password
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
-      res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Current password is incorrect"
-      });
-      return;
-    }
-
-    // Update password
-    user.password = newPassword;
-    await user.save();
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Password changed successfully"
-    });
-    return;
-  } catch (error: any) {
-    res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: error.message
-    });
-    return;
-  }
-};
-
-// Google Sign-In with Firebase
-export const googleSignIn: RequestHandler = async (req, res, next): Promise<void> => {
-  try {
-    const { idToken, phone } = req.body;
-
-    if (!idToken) {
-      res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "ID token is required"
-      });
-      return;
-    }
-
-    // Verify the Firebase ID token
-    let decodedToken;
-    try {
-      decodedToken = await firebaseAuth.verifyIdToken(idToken);
-    } catch (error) {
-      console.error('Firebase token verification failed:', error);
-      res.status(401).json({
-        success: false,
-        statusCode: 401,
-        message: "Invalid Firebase token"
-      });
-      return;
-    }
-
-    const { uid, email, name, picture } = decodedToken;
-
-    if (!email) {
-      res.status(400).json({
-        success: false,
-        statusCode: 400,
-        message: "Email not found in Google account"
-      });
-      return;
-    }
-
-    // Check if user exists by Google ID or email
-    let user = await User.findOne({
-      $or: [
-        { googleId: uid },
-        { email: email }
-      ]
-    });
-
-    if (user) {
-      // Existing user - update Google ID if not set
-      if (!user.googleId) {
-        user.googleId = uid;
-        user.authProvider = 'google';
-        if (picture && !user.img) {
-          user.img = picture;
-        }
-        // Update phone if provided
-        if (phone && !user.phone) {
-          user.phone = phone;
-        }
-        await user.save();
-      }
-    } else {
-      // New user - create account (phone is optional for Google users)
-      user = new User({
-        name: name || email.split('@')[0],
-        email: email,
-        phone: phone || undefined, // Optional for Google Sign-In
-        googleId: uid,
-        authProvider: 'google',
-        img: picture || '',
-        role: 'user',
-        status: 'active',
-        // No password needed for Google sign-in
-        password: Math.random().toString(36).slice(-8), // Random password (won't be used)
-      });
-
-      await user.save();
-      console.log(`✅ New Google user created: ${email} (phone: ${phone || 'not provided'})`);
-    }
-
-    // Generate JWT token
-    const token = generateToken({
-      _id: (user._id as any).toString(),
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      phone: user.phone,
-    } as any);
-
-    // Remove password from response
-    const { password: _, ...userObject } = user.toObject();
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      message: "Google sign-in successful",
-      data: {
-        user: userObject,
-        token,
+        user,
+        isNewUser: true,
+        requiresProfileCompletion: true,
+        nextStep: 'basic-info',
       },
     });
     return;
-  } catch (error: any) {
-    console.error('Google Sign-In Error:', error);
-    res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Google sign-in failed"
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Step 2: Complete Basic Info
+export const completeBasicInfo = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+    const { firstName, lastName, email } = req.body;
+
+    if (!firstName || !lastName || !email) {
+      return next(
+        new appError('First name, last name, and email are required', 400),
+      );
+    }
+
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return next(new appError('User not found. Please register first.', 404));
+    }
+
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+
+    const updatedUser = await User.findOneAndUpdate(
+      { firebaseUid },
+      {
+        $set: {
+          name: fullName,
+          email: email.toLowerCase().trim(),
+          accountStatus: 'active',
+        },
+      },
+      { new: true, runValidators: true },
+    );
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Profile completed successfully',
+      data: {
+        user: updatedUser,
+        profileComplete: true,
+      },
     });
     return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get Profile
+export const getProfile = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user!.firebaseUid });
+
+    if (!user) {
+      return next(new appError('User not found', 404));
+    }
+
+    const requiresProfileCompletion = !user.name || !user.email;
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Profile retrieved successfully',
+      data: {
+        user,
+        requiresProfileCompletion,
+      },
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update Profile
+export const updateProfile = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+    const updateData: any = {};
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      gender,
+      nationality,
+      dateOfBirth,
+    } = req.body;
+
+    if (firstName && lastName) {
+      updateData.name = `${firstName.trim()} ${lastName.trim()}`;
+    }
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (phone) updateData.phone = phone;
+    if (gender) updateData.gender = gender;
+    if (nationality) updateData.nationality = nationality;
+    if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
+
+    // Handle profile image upload
+    if (req.file) {
+      const existingUser = await User.findOne({ firebaseUid });
+
+      if (existingUser?.profileImg) {
+        const publicId = existingUser.profileImg
+          .split('/')
+          .pop()
+          ?.split('.')[0];
+        if (publicId) {
+          await cloudinary.uploader.destroy(`user-profiles/${publicId}`);
+        }
+      }
+
+      updateData.profileImg = req.file.path;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return next(new appError('No fields to update', 400));
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { firebaseUid },
+      { $set: updateData },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedUser) {
+      return next(new appError('User not found', 404));
+    }
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Profile updated successfully',
+      data: updatedUser,
+    });
+    return;
+  } catch (error) {
+    if (req.file?.path) {
+      const publicId = req.file.path.split('/').pop()?.split('.')[0];
+      if (publicId) {
+        await cloudinary.uploader.destroy(`user-profiles/${publicId}`);
+      }
+    }
+    next(error);
+  }
+};
+
+// Update Address - FIXED to match model schema
+export const updateAddress = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+    const { address, country } = req.body;
+
+    const addressData: any = {};
+
+    // Map to correct model fields
+    if (address) addressData['address.address'] = address;
+
+    if (Object.keys(addressData).length === 0) {
+      return next(new appError('No address fields to update', 400));
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { firebaseUid },
+      { $set: addressData },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedUser) {
+      return next(new appError('User not found', 404));
+    }
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Address updated successfully',
+      data: updatedUser,
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Upload/Update Profile Image
+export const uploadProfileImage = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+
+    if (!req.file) {
+      return next(new appError('Profile image is required', 400));
+    }
+
+    const existingUser = await User.findOne({ firebaseUid });
+    if (!existingUser) {
+      return next(new appError('User not found', 404));
+    }
+
+    // Delete old image from Cloudinary if exists
+    if (existingUser.profileImg) {
+      const publicId = existingUser.profileImg.split('/').pop()?.split('.')[0];
+      if (publicId) {
+        await cloudinary.uploader.destroy(`user-profiles/${publicId}`);
+      }
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { firebaseUid },
+      { $set: { profileImg: req.file.path } },
+      { new: true },
+    );
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Profile image uploaded successfully',
+      data: updatedUser,
+    });
+    return;
+  } catch (error) {
+    // Cleanup uploaded file on error
+    if (req.file?.path) {
+      const publicId = req.file.path.split('/').pop()?.split('.')[0];
+      if (publicId) {
+        await cloudinary.uploader.destroy(`user-profiles/${publicId}`);
+      }
+    }
+    next(error);
+  }
+};
+
+// Single Unified Controller for Document Upload - FIXED to match model
+export const uploadDocument = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+    const { documentType, side, documentNumber, documentName } = req.body;
+
+    if (!documentType) {
+      return next(new appError('Document type is required', 400));
+    }
+
+    if (!side || (side !== 'front' && side !== 'back')) {
+      return next(new appError('Side must be "front" or "back"', 400));
+    }
+
+    const validDocTypes = [
+      'aadharCard',
+      'panCard',
+      'passport',
+      'voterId',
+      'birthCertificate',
+      'drivingLicense',
+      'visa',
+      'otherDocument',
+    ];
+
+    if (!validDocTypes.includes(documentType)) {
+      return next(new appError('Invalid document type', 400));
+    }
+
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return next(new appError('User not found', 404));
+    }
+
+    const updateData: any = {};
+
+    // Handle image upload if present
+    if (req.file) {
+      // Get old image path to delete from Cloudinary
+      const oldImagePath = (user as any)[documentType]?.[`${side}Image`];
+
+      if (oldImagePath) {
+        const publicId = oldImagePath.split('/').pop()?.split('.')[0];
+        if (publicId) {
+          await cloudinary.uploader.destroy(`user-documents/${publicId}`);
+        }
+      }
+
+      // Save new image - matches model schema (frontImage/backImage)
+      updateData[`${documentType}.${side}Image`] = req.file.path;
+    }
+
+    // Handle document name for otherDocument type - matches model schema
+    if (documentType === 'otherDocument' && documentName) {
+      updateData[`${documentType}.documentName`] = documentName.trim();
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return next(new appError('No document data provided to update', 400));
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      { firebaseUid },
+      { $set: updateData },
+      { new: true },
+    );
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: `${documentType} ${req.file ? side + ' image' : 'details'} uploaded successfully`,
+      data: {
+        user: updatedUser,
+        updatedDocument: documentType,
+        updatedSide: req.file ? side : null,
+      },
+    });
+    return;
+  } catch (error) {
+    // Cleanup uploaded file on error
+    if (req.file?.path) {
+      const publicId = req.file.path.split('/').pop()?.split('.')[0];
+      if (publicId) {
+        await cloudinary.uploader.destroy(`user-documents/${publicId}`);
+      }
+    }
+    next(error);
+  }
+};
+
+export const addPackageToWishlist = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { packageId } = req.body;
+    const firebaseUid = req.user?.firebaseUid;
+
+    if (!firebaseUid) {
+      return next(new appError('User not authenticated', 401));
+    }
+
+    if (!packageId) {
+      return next(new appError('packageId is required', 400));
+    }
+
+    const user = await User.findOne({ firebaseUid });
+
+    if (!user) {
+      return next(new appError('User not found', 404));
+    }
+
+    const tourPackage = await TourPackageCard.findById(packageId);
+    if (!tourPackage) {
+      return next(new appError('Please select a valid tour package', 404));
+    }
+
+    // Check if package already exists in wishlist
+    const alreadyAdded = user.wishlist.some(
+      (id) => id.toString() === packageId.toString(),
+    );
+
+    if (alreadyAdded) {
+      return next(new appError('Package already in wishlist', 400));
+    }
+
+    user.wishlist.push(packageId);
+
+    await user.save();
+
+    // Populate wishlist after saving
+    const updatedUser = await User.findOne({ firebaseUid }).populate({
+      path: 'wishlist',
+      select:
+        'title category badge tourType days nights cityDetails baseFullPackagePrice departures tourIncludes',
+    });
+
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: 'Package added to wishlist successfully',
+      data: updatedUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removePackageFromWishlist = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { packageId } = req.params;
+    const firebaseUid = req.user?.firebaseUid;
+
+    if (!firebaseUid) {
+      return next(new appError('User not authenticated', 401));
+    }
+
+    if (!packageId) {
+      return next(new appError('packageId is required', 400));
+    }
+
+    // Find user by Firebase UID
+    const user = await User.findOne({ firebaseUid });
+
+    if (!user) {
+      return next(new appError('User not found', 404));
+    }
+
+    // Check if package exists in wishlist
+    const packageIndex = user.wishlist.findIndex(
+      (id) => id.toString() === packageId.toString(),
+    );
+
+    if (packageIndex === -1) {
+      return next(new appError('Package not found in wishlist', 404));
+    }
+
+    // Remove package from wishlist
+    user.wishlist.splice(packageIndex, 1);
+
+    await user.save();
+
+    // Populate wishlist after removing
+    const updatedUser = await User.findOne({ firebaseUid }).populate({
+      path: 'wishlist',
+      select:
+        'title category badge tourType days nights cityDetails baseFullPackagePrice departures tourIncludes',
+    });
+
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: 'Package removed from wishlist successfully',
+      data: updatedUser,
+    });
+  } catch (error) {
+    next(error);
   }
 };

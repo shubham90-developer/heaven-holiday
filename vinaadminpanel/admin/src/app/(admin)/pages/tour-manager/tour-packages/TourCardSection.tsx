@@ -30,7 +30,7 @@ const TourCardSection = ({
               <th>Title</th>
               <th>Category</th>
               <th>Type</th>
-              <th>Days/Nights</th>
+
               <th>Base Price</th>
               <th>Departures</th>
               <th>Status</th>
@@ -60,9 +60,7 @@ const TourCardSection = ({
                     <td>{card.title}</td>
                     <td>{card.category?.name || "N/A"}</td>
                     <td>{card.tourType}</td>
-                    <td>
-                      {card.days}D / {card.nights}N
-                    </td>
+
                     <td>
                       <div className="small">
                         <div>

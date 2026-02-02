@@ -410,10 +410,14 @@ export const createTourPackageCard = async (
       whyTravel: req.body.whyTravel ? parseJSON(req.body.whyTravel) : [],
       tourIncludes: tourIncludes,
       itinerary: itinerary,
-      // ✅ Add new fields
       flights: flights,
       accommodations: accommodations,
       reportingDropping: reportingDropping,
+      tourInclusions: req.body.tourInclusions,
+      tourExclusions: req.body.tourExclusions,
+      tourPrepartion: req.body.tourPrepartion,
+      needToKnow: req.body.needToKnow,
+      cancellationPolicy: req.body.cancellationPolicy,
     };
 
     // Validate and create
@@ -523,7 +527,7 @@ export const getTourPackageCards = async (
         metadata: {
           totalDepartures: totalDates,
           uniqueCities: uniqueCities.length,
-          displayText: `${totalDates} Dates from ${uniqueCities.length} Cities`,
+          displayText: `${totalDates} Dates`,
         },
       };
     });
@@ -644,20 +648,33 @@ export const updateTourPackageCard = async (
       updateData.tourIncludes = parseJSON(req.body.tourIncludes);
     if (req.body.itinerary !== undefined)
       updateData.itinerary = parseJSON(req.body.itinerary);
+    if (req.body.tourInclusions !== undefined)
+      updateData.tourInclusions = req.body.tourInclusions;
+    if (req.body.tourExclusions !== undefined)
+      updateData.tourExclusions = req.body.tourExclusions;
+    if (req.body.tourPrepartion !== undefined)
+      updateData.tourPrepartion = req.body.tourPrepartion;
 
-    // ✅ Handle flights update
     if (req.body.flights !== undefined) {
       updateData.flights = parseJSON(req.body.flights);
     }
 
-    // ✅ Handle accommodations update
+    if (req.body.flights !== undefined) {
+      updateData.flights = parseJSON(req.body.flights);
+    }
+
     if (req.body.accommodations !== undefined) {
       updateData.accommodations = parseJSON(req.body.accommodations);
     }
 
-    // ✅ Handle reporting/dropping update
     if (req.body.reportingDropping !== undefined) {
       updateData.reportingDropping = parseJSON(req.body.reportingDropping);
+    }
+    if (req.body.needToKnow !== undefined) {
+      updateData.needToKnow = parseJSON(req.body.needToKnow);
+    }
+    if (req.body.cancellationPolicy !== undefined) {
+      updateData.cancellationPolicy = parseJSON(req.body.cancellationPolicy);
     }
 
     // Handle departures update with status calculation

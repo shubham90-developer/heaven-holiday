@@ -1,79 +1,37 @@
-"use  client";
+"use client";
 
 import CustomBtn from "@/app/components/CustomBtn";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
-
-const tours = [
-  {
-    id: 1,
-    title: "Kashmir Escape",
-    price: "₹30,000",
-    days: "5 Days | 9 Dept.",
-    image: "/assets/img/tours/1.avif",
-    url: "tour-details",
-  },
-  {
-    id: 2,
-    title: "Rajasthan Mewad",
-    price: "₹45,000",
-    days: "8 Days | 25 Dept.",
-    image: "/assets/img/tours/2.avif",
-    url: "tour-details",
-  },
-  {
-    id: 3,
-    title: "Dalhousie Dharamshala",
-    price: "₹50,000",
-    days: "8 Days | 18 Dept.",
-    image: "/assets/img/tours/3.avif",
-    url: "tour-details",
-  },
-  {
-    id: 4,
-    title: "Varanasi Ayodhya Lucknow",
-    price: "₹60,000",
-    days: "8 Days | 17 Dept.",
-    image: "/assets/img/tours/4.avif",
-    url: "tour-details",
-  },
-  {
-    id: 5,
-    title: "Best of Bhutan",
-    price: "₹91,000",
-    days: "9 Days | 22 Dept.",
-    image: "/assets/img/tours/5.avif",
-    url: "tour-details",
-  },
-  {
-    id: 6,
-    title: "Bangkok Pattaya Phuket Krabi",
-    price: "₹1,15,000",
-    days: "8 Days | 13 Dept.",
-    image: "/assets/img/tours/6.webp",
-    url: "tour-details",
-  },
-  {
-    id: 7,
-    title: "Best of Vietnam",
-    price: "₹1,39,000",
-    days: "8 Days | 19 Dept.",
-    image: "/assets/img/tours/7.avif",
-    url: "tour-details",
-  },
-];
+import { useGetCategoriesQuery } from "store/toursManagement/toursPackagesApi";
 
 const Tourscards = () => {
+  const {
+    data: categories,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useGetCategoriesQuery();
+  if (categoriesLoading) {
+    return <p>loading</p>;
+  }
+  if (categoriesError) {
+    return <p>error</p>;
+  }
+  const categoriesCard = categories?.data || [];
+  const activeCategories = categoriesCard.filter((item) => {
+    return item.status == "Active";
+  });
+  console.log("active", activeCategories);
   return (
     <section className="py-5 bg-gray-100">
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-6">
-          {tours.map((tour) => (
+          {activeCategories.map((tour) => (
             <Link
-              href={tour.url}
+              href={`tour-list/${tour._id}`}
               target="_blank"
-              key={tour.id}
+              key={tour._id}
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"
             >
               <div>
@@ -93,12 +51,12 @@ const Tourscards = () => {
 
                   {/* Price */}
                   <span className="absolute bottom-7 left-3 bg-white text-black text-xs font-bold px-2 py-1 rounded">
-                    {tour.price}
+                    {tour.badge}
                   </span>
 
                   {/* Days */}
                   <span className="absolute bottom-1 left-1 font-bold text-white text-xs px-2 py-1 rounded">
-                    {tour.days}
+                    {tour.categoryType} | {tour.guests} Travelled
                   </span>
                 </div>
 

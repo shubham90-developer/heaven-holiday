@@ -99,27 +99,25 @@ const ItineraryTab = ({
               </Col>
             </Row>
 
-            <Row>
-              <Col md={12}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Activity Description <span className="text-danger">*</span>
-                  </Form.Label>
-                  <div style={{ height: "250px" }}>
-                    <ReactQuill
-                      theme="snow"
-                      value={item.activity}
-                      onChange={(value) =>
-                        handleItineraryChange(index, "activity", value)
-                      }
-                      modules={modules}
-                      placeholder="Describe the day's activities..."
-                      style={{ height: "200px", marginBottom: "50px" }}
-                    />
-                  </div>
-                </Form.Group>
-              </Col>
-            </Row>
+            <div className="w-full">
+              <div className="w-full mb-3">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Activity Description <span className="text-red-600">*</span>
+                </label>
+                <div className="w-full">
+                  <ReactQuill
+                    theme="snow"
+                    value={item.activity}
+                    onChange={(value) =>
+                      handleItineraryChange(index, "activity", value)
+                    }
+                    modules={modules}
+                    placeholder="Describe the day's activities..."
+                    className="w-full bg-white rounded-lg"
+                  />
+                </div>
+              </div>
+            </div>
           </Card.Body>
         </Card>
       ))}

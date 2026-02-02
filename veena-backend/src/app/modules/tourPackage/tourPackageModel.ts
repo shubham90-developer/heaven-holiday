@@ -10,6 +10,7 @@ import {
   IAccommodation,
   IReportingDropping,
 } from './tourPackageInterface';
+import { string } from 'zod';
 
 const FlightSchema = new Schema<IFlight>(
   {
@@ -37,9 +38,9 @@ const AccommodationSchema = new Schema<IAccommodation>(
 );
 
 const ReportingAndDroppingSchema = new Schema<IReportingDropping>({
-  guest_type: { type: String, required: true },
-  reporting_Point: { type: String, required: true },
-  dropping_Point: { type: String, required: true },
+  guestType: { type: String, required: true },
+  reportingPoint: { type: String, required: true },
+  droppingPoint: { type: String, required: true },
 });
 
 const StateSchema = new Schema<IState>(
@@ -143,7 +144,7 @@ const DepartureSchema = new Schema<IDeparture>(
       default: 'Available',
     },
   },
-  { _id: false },
+  { _id: true },
 );
 
 // ============= MAIN SCHEMAS =============
@@ -349,6 +350,26 @@ const TourPackageCardSchema = new Schema<ITourPackageCard>(
 
     reportingDropping: {
       type: [ReportingAndDroppingSchema],
+    },
+    tourInclusions: {
+      type: String,
+      required: true,
+    },
+    tourExclusions: {
+      type: String,
+      required: true,
+    },
+    tourPrepartion: {
+      type: String,
+      required: true,
+    },
+    needToKnow: {
+      type: String,
+      required: true,
+    },
+    cancellationPolicy: {
+      type: String,
+      required: true,
     },
   },
   {

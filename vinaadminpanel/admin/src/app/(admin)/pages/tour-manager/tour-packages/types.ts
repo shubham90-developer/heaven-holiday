@@ -34,3 +34,28 @@ export type ItineraryItem = {
   title: string;
   activity: string;
 };
+
+export type Flight = {
+  fromCity: string;
+  toCity: string;
+  departureDate: string;
+  departureTime: string;
+  arrivalTime: string;
+  airline: string;
+  arrivalDate: string;
+  duration: string;
+};
+
+export type Accommodation = {
+  city: string;
+  country: string;
+  hotelName: string;
+  checkInDate: string;
+  checkOutDate: string;
+};
+
+export type ReportingDropping = {
+  guestType: string;
+  reportingPoint: string;
+  droppingPoint: string;
+};

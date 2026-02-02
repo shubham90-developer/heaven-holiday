@@ -1,114 +1,178 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-// Regex for Indian mobile numbers
-// Must start with 6, 7, 8, or 9 and be followed by 9 digits
-const indianMobileRegex = /^[6-9]\d{9}$/;
+/* ================= BASIC INFO ================= */
 
-// Function to validate and format Indian mobile number
-const validateIndianMobile = (phone: string) => {
-  // Remove country code +91 or 0 prefix if present
-  let cleanedPhone = phone.replace(/^(\+91|0)/, '').trim();
-  
-  if (!indianMobileRegex.test(cleanedPhone)) {
-    throw new Error("Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9");
-  }
-  
-  return cleanedPhone;
-};
+export const basicInfoSchema = z.object({
+  profileImg: z.string().url().optional(),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
 
+  // Optional because phone auth users may not add email immediately
+  email: z.string().email('Invalid email address').optional(),
 
-
-export const authValidation = z.object({
-  name: z.string(),
-  password: z.string().min(6),
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  }),
-  email: z.string().email("Invalid email format"),
-  img: z.string().optional(),
-  role: z.enum(['admin','vendor', 'user']).default('user').optional()
+  // Phone comes from Firebase — do not force in profile form
+  phone: z
+    .string()
+    .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number')
+    .optional(),
 });
 
-export const loginValidation = z.object({
-  email: z.string().email("Invalid email format"),
-  password: z.string()
+/* ================= PERSONAL INFO ================= */
+
+export const personalInfoSchema = z.object({
+  gender: z.enum(['male', 'female', 'other']).optional(),
+  nationality: z.string().min(2).max(50).optional(),
+  dateOfBirth: z.coerce.date().optional(),
 });
 
-export const resetPasswordValidation = z.object({
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  }),
-  newPassword: z.string().min(6)
+/* ================= ADDRESS ================= */
+
+export const addressSchema = z.object({
+  address: z.string().max(200).optional(),
 });
 
-export const activateUserValidation = z.object({
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  })
+/* ================= DOCUMENT SCHEMAS ================= */
+
+const imageField = z.string().url('Invalid image URL').optional();
+
+export const aadharCardSchema = z.object({
+  number: z
+    .string()
+    .regex(/^[0-9]{12}$/, 'Aadhar number must be 12 digits')
+    .optional(),
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-export const phoneCheckValidation = z.object({
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  })
+export const panCardSchema = z.object({
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-export const emailCheckValidation = z.object({
-  email: z.string().email("Invalid email format")
+export const passportSchema = z.object({
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-// Forgot/Reset via Email
-export const requestResetEmailValidation = z.object({
-  email: z.string().email("Invalid email format"),
+export const voterIdSchema = z.object({
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-export const confirmResetEmailValidation = z.object({
-  email: z.string().email("Invalid email format"),
-  otp: z.string().length(4, "OTP must be 4 digits"),
-  newPassword: z.string().min(6),
+export const birthCertificateSchema = z.object({
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-export const updateUserValidation = z.object({
-  name: z.string().optional(),
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  }).optional(),
-  email: z.union([
-    z.string().email("Invalid email format"),
-    z.string().length(0) // Allow empty string
-  ]).optional(),
-  img: z.string().optional(),
-  role: z.enum(['admin','vendor', 'user']).optional(),
+export const drivingLicenseSchema = z.object({
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-
-
-export const requestOtpValidation = z.object({
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  })
+export const visaSchema = z.object({
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-export const verifyOtpValidation = z.object({
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  }),
-  otp: z.string().length(4, "OTP must be 4 digits")
+export const otherDocumentSchema = z.object({
+  documentName: z.string().min(2).max(100).optional(),
+  frontImage: imageField,
+  backImage: imageField,
 });
 
-export const changePasswordValidation = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+/* ================= COMPLETE PROFILE ================= */
+
+export const completeProfileSchema = z.object({
+  profileImg: z.string().url().optional(),
+  name: z.string().trim().min(2).max(100),
+
+  email: z.string().email().optional(),
+  phone: z
+    .string()
+    .regex(/^\+?[1-9]\d{1,14}$/)
+    .optional(),
+
+  gender: z.enum(['male', 'female', 'other']).optional(),
+  nationality: z.string().min(2).max(50).optional(),
+  dateOfBirth: z.coerce.date().optional(),
+
+  address: addressSchema.optional(),
+
+  aadharCard: aadharCardSchema.optional(),
+  panCard: panCardSchema.optional(),
+  passport: passportSchema.optional(),
+  voterId: voterIdSchema.optional(),
+  birthCertificate: birthCertificateSchema.optional(),
+  drivingLicense: drivingLicenseSchema.optional(),
+  visa: visaSchema.optional(),
+  otherDocument: otherDocumentSchema.optional(),
 });
 
-export const updateProfileValidation = z.object({
-  name: z.string().min(1).optional(),
-  email: z.union([
-    z.string().email("Invalid email format"),
-    z.string().length(0)
-  ]).optional(),
-  phone: z.string().refine(validateIndianMobile, {
-    message: "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9"
-  }).optional(),
-  img: z.string().optional(),
+/* ================= UPDATE PROFILE ================= */
+/* deepPartial allows nested updates like { address: { city: "Delhi" } } */
+
+export const updateProfileSchema = z.object({
+  profileImg: z.string().url().optional(),
+  name: z.string().trim().min(2).max(100).optional(),
+  email: z.string().email().optional(),
+  phone: z
+    .string()
+    .regex(/^\+?[1-9]\d{1,14}$/)
+    .optional(),
+
+  gender: z.enum(['male', 'female', 'other']).optional(),
+  nationality: z.string().min(2).max(50).optional(),
+  dateOfBirth: z.coerce.date().optional(),
+
+  address: addressSchema.partial().optional(),
+
+  aadharCard: aadharCardSchema.partial().optional(),
+  panCard: panCardSchema.partial().optional(),
+  passport: passportSchema.partial().optional(),
+  voterId: voterIdSchema.partial().optional(),
+  birthCertificate: birthCertificateSchema.partial().optional(),
+  drivingLicense: drivingLicenseSchema.partial().optional(),
+  visa: visaSchema.partial().optional(),
+  otherDocument: otherDocumentSchema.partial().optional(),
 });
+
+/* ================= PHONE VERIFICATION ================= */
+
+export const phoneVerificationSchema = z.object({
+  firebaseUid: z.string().min(1, 'Firebase UID is required'),
+  phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number'),
+});
+
+/* ================= DOCUMENT UPLOAD ================= */
+
+export const documentUploadSchema = z.object({
+  documentType: z.enum([
+    'aadharCard',
+    'panCard',
+    'passport',
+    'voterId',
+    'birthCertificate',
+    'drivingLicense',
+    'visa',
+    'otherDocument',
+  ]),
+  side: z.enum(['front', 'back']),
+  imageUrl: z.string().url('Invalid image URL'),
+});
+
+/* ================= TYPES ================= */
+
+export type BasicInfo = z.infer<typeof basicInfoSchema>;
+export type PersonalInfo = z.infer<typeof personalInfoSchema>;
+export type Address = z.infer<typeof addressSchema>;
+export type AadharCard = z.infer<typeof aadharCardSchema>;
+export type PanCard = z.infer<typeof panCardSchema>;
+export type Passport = z.infer<typeof passportSchema>;
+export type VoterId = z.infer<typeof voterIdSchema>;
+export type BirthCertificate = z.infer<typeof birthCertificateSchema>;
+export type DrivingLicense = z.infer<typeof drivingLicenseSchema>;
+export type Visa = z.infer<typeof visaSchema>;
+export type OtherDocument = z.infer<typeof otherDocumentSchema>;
+export type CompleteProfile = z.infer<typeof completeProfileSchema>;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+export type PhoneVerification = z.infer<typeof phoneVerificationSchema>;
+export type DocumentUpload = z.infer<typeof documentUploadSchema>;

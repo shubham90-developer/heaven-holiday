@@ -3,90 +3,24 @@ import { useState } from "react";
 import Image from "next/image";
 import { CalendarDays, Plane, Hotel, MapPin } from "lucide-react";
 
-const TourDetailsTabs = () => {
+const TourDetailsTabs = ({ tourData }) => {
   const [activeTab, setActiveTab] = useState("flights");
 
-  // ✈️ Flight data
-  const flights = [
-    {
-      from: { city: "Mumbai", date: "18 Nov", time: "02:40" },
-      to: { city: "Nairobi", date: "18 Nov", time: "06:35" },
-      airline: "/assets/img/kq.webp",
-      duration: "6h 25m",
-    },
-    {
-      from: { city: "Nairobi", date: "18 Nov", time: "07:45" },
-      to: { city: "Johannesburg", date: "18 Nov", time: "10:55" },
-      airline: "/assets/img/kq.webp",
-      duration: "4h 10m",
-    },
-    {
-      from: { city: "Victoria Falls", date: "26 Nov", time: "18:05" },
-      to: { city: "Nairobi", date: "26 Nov", time: "22:20" },
-      airline: "/assets/img/kq.webp",
-      duration: "03:15",
-    },
-    {
-      from: { city: "Nairobi", date: "02 Dec", time: "16:45" },
-      to: { city: "Mumbai", date: "03 Dec", time: "01:30" },
-      airline: "/assets/img/kq.webp",
-      duration: "06:15",
-    },
-  ];
+  // ✈️ Flight data from tourData
+  const flights = tourData?.flights || [];
 
-  // 🏨 Hotel Data
-  const hotels = [
-    {
-      city: "Sun City - South Africa",
-      hotel: "Sun City Cabanas / or similar",
-      checkIn: "18 Nov",
-      checkOut: "19 Nov",
-    },
-    {
-      city: "Johannesburg - South Africa",
-      hotel: "Peermont Metcourt Hotel / or similar",
-      checkIn: "19 Nov",
-      checkOut: "20 Nov",
-    },
-    {
-      city: "George - South Africa",
-      hotel: "Protea Hotel by Marriott George King George / or similar",
-      checkIn: "20 Nov",
-      checkOut: "22 Nov",
-    },
-    {
-      city: "Cape Town - South Africa",
-      hotel: "Cresta Grande Cape Town / or similar",
-      checkIn: "22 Nov",
-      checkOut: "25 Nov",
-    },
-    {
-      city: "Victoria Falls - Zimbabwe",
-      hotel: "Elephant Hills Resort / or similar",
-      checkIn: "25 Nov",
-      checkOut: "26 Nov",
-    },
-    {
-      city: "Nairobi - Kenya",
-      hotel: "The Concord Hotel & Suites / or similar",
-      checkIn: "26 Nov",
-      checkOut: "27 Nov",
-    },
-  ];
+  // 🏨 Hotel Data from tourData
+  const hotels = tourData?.accommodations || [];
 
-  // 📍 Reporting / Dropping
-  const reportingData = [
-    {
-      type: "Scheduled Tour Guests",
-      reporting: "Chhatrapati Shivaji Maharaj International Airport, Mumbai",
-      dropping: "Chhatrapati Shivaji Maharaj International Airport, Mumbai",
-    },
-    {
-      type: "Joining & Leaving Guests",
-      reporting: "Joining & Leaving option is Not Available",
-      dropping: "Joining & Leaving option is Not Available",
-    },
-  ];
+  // 📍 Reporting / Dropping from tourData
+  const reportingData = tourData?.reportingDropping || [];
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  };
 
   return (
     <section className="py-10 lg:px-0 px-4" id="details">
@@ -119,100 +53,125 @@ const TourDetailsTabs = () => {
         <div className="border rounded-lg bg-white overflow-hidden">
           {activeTab === "flights" && (
             <div>
-              {flights.map((flight, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-between gap-6 p-6 ${
-                    i % 2 === 0 ? "bg-gray-50" : "bg-white"
-                  }`}
-                >
-                  {/* From */}
-                  <div>
-                    <p className="font-medium">{flight.from.city}</p>
-                    <p className="text-xs text-gray-500">
-                      {flight.from.date} | {flight.from.time}
-                    </p>
-                  </div>
+              {flights.length > 0 ? (
+                flights.map((flight, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between gap-6 p-6 ${
+                      i % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    }`}
+                  >
+                    {/* From */}
+                    <div>
+                      <p className="font-medium">{flight.fromCity}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatDate(flight.departureDate)} |{" "}
+                        {flight.departureTime}
+                      </p>
+                    </div>
 
-                  {/* Airline + Duration */}
-                  <div className="flex flex-col items-center">
-                    <Plane className="w-5 h-5 text-blue-800 mb-1" />
-                    <Image
-                      src={flight.airline}
-                      alt="Airline"
-                      width={80}
-                      height={20}
-                      className="object-contain h-10"
-                    />
-                    <span className="bg-gray-100 px-3 py-1 mt-2 rounded-full text-xs text-gray-700">
-                      {flight.duration}
-                    </span>
-                  </div>
+                    {/* Airline + Duration */}
+                    <div className="flex flex-col items-center">
+                      <Plane className="w-5 h-5 text-blue-800 mb-1" />
+                      {flight.airline && (
+                        <div className="text-sm font-medium mb-1">
+                          {flight.airline}
+                        </div>
+                      )}
+                      {flight.duration && (
+                        <span className="bg-gray-100 px-3 py-1 mt-2 rounded-full text-xs text-gray-700">
+                          {flight.duration}
+                        </span>
+                      )}
+                    </div>
 
-                  {/* To */}
-                  <div className="text-right">
-                    <p className="font-medium">{flight.to.city}</p>
-                    <p className="text-xs text-gray-500">
-                      {flight.to.date} | {flight.to.time}
-                    </p>
+                    {/* To */}
+                    <div className="text-right">
+                      <p className="font-medium">{flight.toCity}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatDate(flight.arrivalDate)} | {flight.arrivalTime}
+                      </p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="p-6 text-center text-gray-500">
+                  No flight information available for this tour.
                 </div>
-              ))}
+              )}
             </div>
           )}
 
           {activeTab === "accommodation" && (
             <div>
-              {hotels.map((hotel, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-between gap-6 p-6 ${
-                    i % 2 === 0 ? "bg-gray-50" : "bg-white"
-                  }`}
-                >
-                  <div>
-                    <p className="font-medium">{hotel.city}</p>
-                    <p className="text-xs text-gray-500">{hotel.hotel}</p>
+              {hotels.length > 0 ? (
+                hotels.map((hotel, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between gap-6 p-6 ${
+                      i % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {hotel.city}
+                        {hotel.country && ` - ${hotel.country}`}
+                      </p>
+                      <p className="text-xs text-gray-500">{hotel.hotelName}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-gray-600" />
+                      <p className="text-sm">
+                        {formatDate(hotel.checkInDate)} →{" "}
+                        {formatDate(hotel.checkOutDate)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-gray-600" />
-                    <p className="text-sm">
-                      {hotel.checkIn} → {hotel.checkOut}
-                    </p>
-                  </div>
+                ))
+              ) : (
+                <div className="p-6 text-center text-gray-500">
+                  No accommodation information available for this tour.
                 </div>
-              ))}
+              )}
             </div>
           )}
 
           {activeTab === "reporting" && (
             <div>
-              {reportingData.map((r, i) => (
-                <div
-                  key={i}
-                  className={`flex flex-col md:flex-row justify-between gap-6 p-6 ${
-                    i % 2 === 0 ? "bg-gray-50" : "bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-blue-800" />
+              {reportingData.length > 0 ? (
+                reportingData.map((r, i) => (
+                  <div
+                    key={i}
+                    className={`flex flex-col md:flex-row justify-between gap-6 p-6 ${
+                      i % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-blue-800" />
+                      <div>
+                        <p className="font-semibold text-sm">Guest Type</p>
+                        <p className="text-sm text-gray-700">{r.guestType}</p>
+                      </div>
+                    </div>
+
                     <div>
-                      <p className="font-semibold text-sm">Guest Type</p>
-                      <p className="text-sm text-gray-700">{r.type}</p>
+                      <p className="font-semibold text-sm">Reporting Point</p>
+                      <p className="text-sm text-gray-700">
+                        {r.reportingPoint}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-sm">Dropping Point</p>
+                      <p className="text-sm text-gray-700">{r.droppingPoint}</p>
                     </div>
                   </div>
-
-                  <div>
-                    <p className="font-semibold text-sm">Reporting Point</p>
-                    <p className="text-sm text-gray-700">{r.reporting}</p>
-                  </div>
-
-                  <div>
-                    <p className="font-semibold text-sm">Dropping Point</p>
-                    <p className="text-sm text-gray-700">{r.dropping}</p>
-                  </div>
+                ))
+              ) : (
+                <div className="p-6 text-center text-gray-500">
+                  No reporting and dropping information available for this tour.
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

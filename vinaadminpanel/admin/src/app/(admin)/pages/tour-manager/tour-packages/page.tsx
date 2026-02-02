@@ -13,7 +13,6 @@ import {
   Tab,
   Card,
 } from "react-bootstrap";
-
 import PageTitle from "@/components/PageTitle";
 import { useState } from "react";
 import ReactQuill from "react-quill-new";
@@ -29,8 +28,6 @@ import {
   useCreateTourPackageCardMutation,
   useUpdateTourPackageCardMutation,
   useDeleteTourPackageCardMutation,
-  useBulkAddDeparturesMutation,
-  useBulkUpdateDepartureStatusMutation,
 } from "@/app/redux/api/tourManager/tourPackageApi";
 import { useGetAllIncludesQuery } from "@/app/redux/api/tourManager/includes";
 
@@ -42,6 +39,9 @@ import {
   Departure,
   TourIncludes,
   ItineraryItem,
+  Flight,
+  Accommodation,
+  ReportingDropping,
 } from "./types";
 import { CATEGORY_TYPES, STATUS_OPTIONS, modules } from "./constant";
 import CategorySection from "./CategorySection";
@@ -53,7 +53,11 @@ import DeparturesTab from "./TourCardModalTabs/DeparturesTab";
 import ItineraryTab from "./TourCardModalTabs/ItineraryTab";
 import IncludesTab from "./TourCardModalTabs/IncludesTab";
 import GalleryTab from "./TourCardModalTabs/GalleryTab";
-
+import FlightsTab from "./TourCardModalTabs/flightTab";
+import AccommodationsTab from "./TourCardModalTabs/accomodationsTab";
+import ReportingDroppingTab from "./TourCardModalTabs/reporting&droppingTab";
+import TourInformationTab from "./TourCardModalTabs/tourInfTab";
+import PoliciesTab from "./TourCardModalTabs/policiesTab";
 const TourPackagePage = () => {
   const {
     data: includes,
@@ -75,10 +79,6 @@ const TourPackagePage = () => {
   const [updateTourCard] = useUpdateTourPackageCardMutation();
   const [deleteTourCard] = useDeleteTourPackageCardMutation();
 
-  // NEW: Departure mutations
-  const [bulkAddDepartures] = useBulkAddDeparturesMutation();
-  const [bulkUpdateDepartureStatus] = useBulkUpdateDepartureStatusMutation();
-
   const categories = categoriesData?.data || [];
   const tourCards = tourCardsData?.data || [];
   const includesData = includes?.data || [];
@@ -94,7 +94,7 @@ const TourPackagePage = () => {
   const [categoryTitle, setCategoryTitle] = useState("");
   const [categoryDescription, setCategoryDescription] = useState("");
   const [categoryGuests, setCategoryGuests] = useState("");
-  const [categoryIcon, setCategoryIcon] = useState("");
+
   const [categoryBadge, setCategoryBadge] = useState("");
   const [categoryType, setCategoryType] = useState("world");
   const [categoryStatus, setCategoryStatus] = useState("Active");
@@ -140,12 +140,12 @@ const TourPackagePage = () => {
   >(null);
   const [departures, setDepartures] = useState<Departure[]>([
     {
-      city: "Mumbai",
+      city: "",
       date: "",
       fullPackagePrice: 0,
       joiningPrice: 0,
-      availableSeats: 40,
-      totalSeats: 40,
+      availableSeats: 0,
+      totalSeats: 0,
     },
   ]);
   // NEW: Itinerary state
@@ -154,6 +154,46 @@ const TourPackagePage = () => {
   ]);
   const [viewDeparturesTab, setViewDeparturesTab] = useState("add");
 
+  // NEW: Flights state
+  const [flights, setFlights] = useState<Flight[]>([
+    {
+      fromCity: "",
+      toCity: "",
+      departureDate: "",
+      departureTime: "",
+      arrivalTime: "",
+      airline: "",
+      arrivalDate: "",
+      duration: "",
+    },
+  ]);
+
+  // NEW: Accommodations state
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([
+    {
+      city: "",
+      country: "",
+      hotelName: "",
+      checkInDate: "",
+      checkOutDate: "",
+    },
+  ]);
+
+  // NEW: Reporting & Dropping state
+  const [reportingDropping, setReportingDropping] = useState<
+    ReportingDropping[]
+  >([
+    {
+      guestType: "",
+      reportingPoint: "",
+      droppingPoint: "",
+    },
+  ]);
+  const [tourInclusions, setTourInclusions] = useState("");
+  const [tourExclusions, setTourExclusions] = useState("");
+  const [tourPrepartion, setTourPrepartion] = useState("");
+  const [needToKnow, setNeedToKnow] = useState("");
+  const [cancellationPolicy, setCancellationPolicy] = useState("");
   const [alert, setAlert] = useState<AlertType>({
     show: false,
     message: "",
@@ -176,7 +216,7 @@ const TourPackagePage = () => {
     setCategoryTitle("");
     setCategoryDescription("");
     setCategoryGuests("");
-    setCategoryIcon("");
+
     setCategoryBadge("");
     setCategoryType("world");
     setCategoryStatus("Active");
@@ -208,22 +248,61 @@ const TourPackagePage = () => {
     setTourGalleryFiles([]);
     setTourGalleryPreviews([]);
     setCurrentTourCardTab("basic");
-
+    setTourInclusions("");
+    setTourExclusions("");
+    setTourPrepartion("");
     // NEW: Reset departure state
     setSelectedTourForDepartures(null);
     setDepartures([
       {
-        city: "Mumbai",
+        city: "",
         date: "",
         fullPackagePrice: 0,
         joiningPrice: 0,
-        availableSeats: 40,
-        totalSeats: 40,
+        availableSeats: 0,
+        totalSeats: 0,
       },
     ]);
     // NEW: Reset itinerary state
     setItinerary([{ day: 1, date: "", title: "", activity: "" }]);
     setViewDeparturesTab("add");
+
+    // NEW: Reset flights state
+    setFlights([
+      {
+        fromCity: "",
+        toCity: "",
+        departureDate: "",
+        departureTime: "",
+        arrivalTime: "",
+        airline: "",
+        arrivalDate: "",
+        duration: "",
+      },
+    ]);
+
+    // NEW: Reset accommodations state
+    setAccommodations([
+      {
+        city: "",
+        country: "",
+        hotelName: "",
+        checkInDate: "",
+        checkOutDate: "",
+      },
+    ]);
+
+    // NEW: Reset reporting & dropping state
+    setReportingDropping([
+      {
+        guestType: "",
+        reportingPoint: "",
+        droppingPoint: "",
+      },
+    ]);
+    setNeedToKnow("");
+    setCancellationPolicy("");
+    // Load tour information fields
   };
 
   // --- Category Modal Handlers ---
@@ -391,6 +470,58 @@ const TourPackagePage = () => {
           })),
         );
       }
+      // NEW: Load flights if available
+      if (card.flights && card.flights.length > 0) {
+        setFlights(
+          card.flights.map((flight: any) => ({
+            fromCity: flight.fromCity || "",
+            toCity: flight.toCity || "",
+            departureDate: flight.departureDate
+              ? new Date(flight.departureDate).toISOString().split("T")[0]
+              : "",
+            departureTime: flight.departureTime || "",
+            arrivalTime: flight.arrivalTime || "",
+            airline: flight.airline || "",
+            arrivalDate: flight.arrivalDate
+              ? new Date(flight.arrivalDate).toISOString().split("T")[0]
+              : "",
+            duration: flight.duration || "",
+          })),
+        );
+      }
+
+      // NEW: Load accommodations if available
+      if (card.accommodations && card.accommodations.length > 0) {
+        setAccommodations(
+          card.accommodations.map((acc: any) => ({
+            city: acc.city || "",
+            country: acc.country || "",
+            hotelName: acc.hotelName || "",
+            checkInDate: acc.checkInDate
+              ? new Date(acc.checkInDate).toISOString().split("T")[0]
+              : "",
+            checkOutDate: acc.checkOutDate
+              ? new Date(acc.checkOutDate).toISOString().split("T")[0]
+              : "",
+          })),
+        );
+      }
+
+      // NEW: Load reporting & dropping if available
+      if (card.reportingDropping && card.reportingDropping.length > 0) {
+        setReportingDropping(
+          card.reportingDropping.map((rd: any) => ({
+            guestType: rd.guestType || "",
+            reportingPoint: rd.reportingPoint || "",
+            droppingPoint: rd.droppingPoint || "",
+          })),
+        );
+      }
+      setTourInclusions(card.tourInclusions || "");
+      setTourExclusions(card.tourExclusions || "");
+      setTourPrepartion(card.tourPrepartion || "");
+      setNeedToKnow(card.needToKnow || "");
+      setCancellationPolicy(card.cancellationPolicy || "");
     } else {
       setCurrentTourCardTab("basic");
       // Set default category for create mode
@@ -522,12 +653,12 @@ const TourPackagePage = () => {
     setDepartures([
       ...departures,
       {
-        city: "Mumbai",
+        city: "",
         date: "",
         fullPackagePrice: tourBaseFullPackagePrice,
         joiningPrice: tourBaseJoiningPrice,
-        availableSeats: 40,
-        totalSeats: 40,
+        availableSeats: 0,
+        totalSeats: 0,
       },
     ]);
   };
@@ -568,6 +699,94 @@ const TourPackagePage = () => {
     const newItinerary = [...itinerary];
     newItinerary[index] = { ...newItinerary[index], [field]: value };
     setItinerary(newItinerary);
+  };
+
+  // Flight helpers
+  const handleAddFlight = () => {
+    setFlights([
+      ...flights,
+      {
+        fromCity: "",
+        toCity: "",
+        departureDate: "",
+        departureTime: "",
+        arrivalTime: "",
+        airline: "",
+        arrivalDate: "",
+        duration: "",
+      },
+    ]);
+  };
+
+  const handleRemoveFlight = (index: number) => {
+    setFlights(flights.filter((_, i) => i !== index));
+  };
+
+  const handleFlightChange = (
+    index: number,
+    field: keyof Flight,
+    value: string,
+  ) => {
+    const newFlights = [...flights];
+    newFlights[index] = { ...newFlights[index], [field]: value };
+    setFlights(newFlights);
+  };
+
+  // Accommodation helpers
+  const handleAddAccommodation = () => {
+    setAccommodations([
+      ...accommodations,
+      {
+        city: "",
+        country: "",
+        hotelName: "",
+        checkInDate: "",
+        checkOutDate: "",
+      },
+    ]);
+  };
+
+  const handleRemoveAccommodation = (index: number) => {
+    setAccommodations(accommodations.filter((_, i) => i !== index));
+  };
+
+  const handleAccommodationChange = (
+    index: number,
+    field: keyof Accommodation,
+    value: string,
+  ) => {
+    const newAccommodations = [...accommodations];
+    newAccommodations[index] = { ...newAccommodations[index], [field]: value };
+    setAccommodations(newAccommodations);
+  };
+
+  // Reporting & Dropping helpers
+  const handleAddReportingDropping = () => {
+    setReportingDropping([
+      ...reportingDropping,
+      {
+        guestType: "",
+        reportingPoint: "",
+        droppingPoint: "",
+      },
+    ]);
+  };
+
+  const handleRemoveReportingDropping = (index: number) => {
+    setReportingDropping(reportingDropping.filter((_, i) => i !== index));
+  };
+
+  const handleReportingDroppingChange = (
+    index: number,
+    field: keyof ReportingDropping,
+    value: string,
+  ) => {
+    const newReportingDropping = [...reportingDropping];
+    newReportingDropping[index] = {
+      ...newReportingDropping[index],
+      [field]: value,
+    };
+    setReportingDropping(newReportingDropping);
   };
 
   const handleTourCardSubmit = async (e: React.FormEvent) => {
@@ -643,6 +862,18 @@ const TourPackagePage = () => {
         return;
       }
     }
+    if (
+      !tourInclusions.trim() ||
+      !tourExclusions.trim() ||
+      !tourPrepartion.trim()
+    ) {
+      showAlert("Please fill all tour information fields!", "warning");
+      return;
+    }
+    if (!needToKnow.trim() || !cancellationPolicy.trim()) {
+      showAlert("Please fill all policy fields!", "warning");
+      return;
+    }
     if (!isEditMode && tourGalleryFiles.length === 0) {
       showAlert("Please upload at least one gallery image!", "warning");
       return;
@@ -675,8 +906,16 @@ const TourPackagePage = () => {
       // NEW: Add departures
       formData.append("departures", JSON.stringify(departures));
       formData.append("itinerary", JSON.stringify(itinerary));
+      formData.append("flights", JSON.stringify(flights));
+      formData.append("accommodations", JSON.stringify(accommodations));
+      formData.append("reportingDropping", JSON.stringify(reportingDropping));
       formData.append("tourManagerIncluded", tourManagerIncluded.toString());
       formData.append("tourManagerNote", tourManagerNote);
+      formData.append("tourInclusions", tourInclusions);
+      formData.append("tourExclusions", tourExclusions);
+      formData.append("tourPrepartion", tourPrepartion);
+      formData.append("needToKnow", needToKnow);
+      formData.append("cancellationPolicy", cancellationPolicy);
       formData.append(
         "whyTravel",
         JSON.stringify(tourWhyTravel.filter((w) => w)),
@@ -848,7 +1087,7 @@ const TourPackagePage = () => {
                   onChange={(e) => setCategoryType(e.target.value)}
                   required
                 >
-                  {CATEGORY_TYPES.map((type) => (
+                  {CATEGORY_TYPES.map((type: any) => (
                     <option key={type} value={type}>
                       {type.charAt(0).toUpperCase() + type.slice(1)}
                     </option>
@@ -863,7 +1102,7 @@ const TourPackagePage = () => {
                   value={categoryStatus}
                   onChange={(e) => setCategoryStatus(e.target.value)}
                 >
-                  {STATUS_OPTIONS.map((status) => (
+                  {STATUS_OPTIONS.map((status: any) => (
                     <option key={status} value={status}>
                       {status}
                     </option>
@@ -1043,6 +1282,51 @@ const TourPackagePage = () => {
                 handleRemoveGalleryImage={handleRemoveGalleryImage}
               />
             </Tab>
+
+            <Tab eventKey="flights" title="Flights">
+              <FlightsTab
+                flights={flights}
+                handleAddFlight={handleAddFlight}
+                handleRemoveFlight={handleRemoveFlight}
+                handleFlightChange={handleFlightChange}
+              />
+            </Tab>
+
+            <Tab eventKey="accommodations" title="Accommodations">
+              <AccommodationsTab
+                accommodations={accommodations}
+                handleAddAccommodation={handleAddAccommodation}
+                handleRemoveAccommodation={handleRemoveAccommodation}
+                handleAccommodationChange={handleAccommodationChange}
+              />
+            </Tab>
+
+            <Tab eventKey="reportingDropping" title="Reporting & Dropping">
+              <ReportingDroppingTab
+                reportingDropping={reportingDropping}
+                handleAddReportingDropping={handleAddReportingDropping}
+                handleRemoveReportingDropping={handleRemoveReportingDropping}
+                handleReportingDroppingChange={handleReportingDroppingChange}
+              />
+            </Tab>
+            <Tab eventKey="tourInformation" title="Tour Information">
+              <TourInformationTab
+                tourInclusions={tourInclusions}
+                setTourInclusions={setTourInclusions}
+                tourExclusions={tourExclusions}
+                setTourExclusions={setTourExclusions}
+                tourPrepartion={tourPrepartion}
+                setTourPrepartion={setTourPrepartion}
+              />
+            </Tab>
+            <Tab eventKey="policies" title="Policies">
+              <PoliciesTab
+                needToKnow={needToKnow}
+                setNeedToKnow={setNeedToKnow}
+                cancellationPolicy={cancellationPolicy}
+                setCancellationPolicy={setCancellationPolicy}
+              />
+            </Tab>
           </Tabs>
 
           <div className="d-flex justify-content-end gap-2">
@@ -1140,7 +1424,7 @@ const TourPackagePage = () => {
         show={modalType !== null}
         onHide={handleCloseModal}
         centered
-        size="lg"
+        size="xl"
         scrollable
       >
         <Modal.Header closeButton>

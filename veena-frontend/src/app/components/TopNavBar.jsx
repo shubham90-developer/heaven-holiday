@@ -1,16 +1,44 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { User } from "lucide-react";
 import PhoneDropdown from "./TopNum";
 import Link from "next/link";
 import SearchBar from "./SearchBar";
 import Logo from "./Logo";
 import SignInModal from "./SignInModal";
-import ProfileDroupdown from "./ProfileDroupdown";
+import ProfileDropdown from "./ProfileDroupdown";
+import { auth } from "@/app/config/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 const TopNavBar = () => {
   const [showPhoneInfo, setShowPhoneInfo] = useState(false);
   const timeoutRef = useRef(null);
+
+  // Auth state
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Handle auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+
+        // Ensure token is in localStorage
+        const token = await firebaseUser.getIdToken();
+        localStorage.setItem("authToken", token);
+        console.log("User logged in:", firebaseUser.phoneNumber);
+      } else {
+        setUser(null);
+        localStorage.removeItem("authToken");
+        console.log("User logged out");
+      }
+      setLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -37,14 +65,26 @@ const TopNavBar = () => {
           <Link
             href="/travel-planner-details"
             target="_blank"
-            className="hidden sm:inline-block text-yellow-400 font-semibold hover:underline text-xs "
+            className="hidden sm:inline-block text-yellow-400 font-semibold hover:underline text-xs"
           >
             Travel Planner 2025
           </Link>
           |
           <PhoneDropdown />
-          {/* <SignInModal /> */}
-          <ProfileDroupdown />
+          {/* Conditional Rendering Based on Auth State */}
+          {loading ? (
+            // Loading state
+            <div className="flex items-center gap-1 text-xs">
+              <User className="w-4 h-4 animate-pulse" />
+              <span className="hidden sm:inline">Loading...</span>
+            </div>
+          ) : user ? (
+            // User is authenticated - Show ProfileDropdown with user prop
+            <ProfileDropdown user={user} />
+          ) : (
+            // User is not authenticated - Show SignInModal
+            <SignInModal />
+          )}
         </div>
       </div>
 

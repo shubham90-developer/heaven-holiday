@@ -96,23 +96,23 @@ const IncludesTab = ({
           />
         </Col>
       </Row>
-      <Row className="mt-2">
-        <Col md={12}>
-          <Form.Group className="mb-3">
-            <Form.Label>Tour Manager Note</Form.Label>
-            <div style={{ height: "200px" }}>
-              <ReactQuill
-                theme="snow"
-                value={tourManagerNote}
-                onChange={setTourManagerNote}
-                modules={modules}
-                placeholder="Additional information about tour manager..."
-                style={{ height: "150px", marginBottom: "50px" }}
-              />
-            </div>
-          </Form.Group>
-        </Col>
-      </Row>
+      <div className="w-full mt-2">
+        <div className="w-full mb-3">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
+            Tour Manager Note
+          </label>
+          <div className="w-full">
+            <ReactQuill
+              theme="snow"
+              value={tourManagerNote}
+              onChange={setTourManagerNote}
+              modules={modules}
+              placeholder="Additional information about tour manager..."
+              className="w-full bg-white rounded-lg"
+            />
+          </div>
+        </div>
+      </div>
 
       <h6 className="mt-4 mb-3">Why Travel</h6>
       {tourWhyTravel.map((reason, index) => (

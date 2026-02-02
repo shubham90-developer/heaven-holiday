@@ -1,12 +1,91 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaCalendarAlt, FaChevronDown } from "react-icons/fa";
 import KycDocuments from "./KycDocuments";
+import {
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+  useUpdateAddressMutation,
+} from "store/authApi/authApi";
 
 const MyProfile = () => {
-  const [gender, setGender] = useState(null);
-  const [openProfile, setOpenProfile] = useState(true); // default open
+  const [openProfile, setOpenProfile] = useState(true);
   const [openTravellers, setOpenTravellers] = useState(false);
+
+  // RTK Queries
+  const { data: profileData, isLoading } = useGetProfileQuery();
+  const [updateProfile] = useUpdateProfileMutation();
+  const [updateAddress] = useUpdateAddressMutation();
+
+  const userProfile = profileData?.data?.user;
+
+  // Form state
+  const [formData, setFormData] = useState({
+    gender: "",
+    nationality: "",
+    dateOfBirth: "",
+    address: "",
+  });
+
+  // Populate form when data loads
+  useEffect(() => {
+    if (userProfile) {
+      setFormData({
+        gender: userProfile.gender || "",
+        nationality: userProfile.nationality || "",
+        dateOfBirth: userProfile.dateOfBirth
+          ? new Date(userProfile.dateOfBirth).toISOString().split("T")[0]
+          : "",
+        address: userProfile.address?.address || "",
+      });
+    }
+  }, [userProfile]);
+
+  const handleSave = async () => {
+    try {
+      // Update profile
+      await updateProfile({
+        gender: formData.gender,
+        nationality: formData.nationality,
+        dateOfBirth: formData.dateOfBirth,
+      }).unwrap();
+
+      // Update address
+      await updateAddress({
+        address: formData.address,
+      }).unwrap();
+
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Update error:", error);
+      alert("Failed to update profile");
+    }
+  };
+
+  const handleCancel = () => {
+    // Reset to original data
+    if (userProfile) {
+      setFormData({
+        gender: userProfile.gender || "",
+        nationality: userProfile.nationality || "",
+        dateOfBirth: userProfile.dateOfBirth
+          ? new Date(userProfile.dateOfBirth).toISOString().split("T")[0]
+          : "",
+        address: userProfile.address?.address || "",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 p-6">
+        <div className="animate-pulse">
+          <div className="h-12 bg-gray-200 rounded mb-4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1">
@@ -31,9 +110,9 @@ const MyProfile = () => {
             {/* Gender */}
             <div className="flex gap-4 mb-4">
               <button
-                onClick={() => setGender("Male")}
+                onClick={() => setFormData({ ...formData, gender: "male" })}
                 className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${
-                  gender === "Male"
+                  formData.gender === "male"
                     ? "bg-blue-900 text-white border-blue-900"
                     : "hover:bg-gray-100"
                 }`}
@@ -41,14 +120,24 @@ const MyProfile = () => {
                 Male
               </button>
               <button
-                onClick={() => setGender("Female")}
+                onClick={() => setFormData({ ...formData, gender: "female" })}
                 className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${
-                  gender === "Female"
+                  formData.gender === "female"
                     ? "bg-blue-900 text-white border-blue-900"
                     : "hover:bg-gray-100"
                 }`}
               >
                 Female
+              </button>
+              <button
+                onClick={() => setFormData({ ...formData, gender: "other" })}
+                className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${
+                  formData.gender === "other"
+                    ? "bg-blue-900 text-white border-blue-900"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                Other
               </button>
             </div>
 
@@ -56,30 +145,48 @@ const MyProfile = () => {
             <input
               type="text"
               placeholder="Nationality"
+              value={formData.nationality}
+              onChange={(e) =>
+                setFormData({ ...formData, nationality: e.target.value })
+              }
               className="w-full border rounded-md p-2 mb-3 border-gray-400 text-xs py-3"
             />
 
             {/* DOB */}
-            <div className="flex items-center rounded-md p-2 mb-3">
+            <div className="flex items-center rounded-md mb-3">
               <FaCalendarAlt className="text-gray-400 mr-2" />
               <input
                 type="date"
-                className="w-full border rounded-md p-2 mb-3 border-gray-400 text-xs py-3"
+                value={formData.dateOfBirth}
+                onChange={(e) =>
+                  setFormData({ ...formData, dateOfBirth: e.target.value })
+                }
+                className="w-full border rounded-md p-2 border-gray-400 text-xs py-3"
               />
             </div>
 
             {/* Address */}
             <textarea
               placeholder="Enter Address"
+              value={formData.address}
+              onChange={(e) =>
+                setFormData({ ...formData, address: e.target.value })
+              }
               className="w-full border rounded-md p-2 mb-3 border-gray-400 text-xs py-3"
             />
 
             {/* Buttons */}
             <div className="flex gap-4">
-              <button className="px-4 py-2 border rounded-md text-xs cursor-pointer">
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 border rounded-md text-xs cursor-pointer hover:bg-gray-100"
+              >
                 Cancel
               </button>
-              <button className="px-4 py-2 bg-yellow-400 rounded-md text-xs cursor-pointer">
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-yellow-400 rounded-md text-xs cursor-pointer hover:bg-yellow-500"
+              >
                 Save
               </button>
             </div>
@@ -109,7 +216,7 @@ const MyProfile = () => {
         {openTravellers && (
           <div className="p-6 text-center border-t">
             <blockquote className="italic text-gray-600 mb-4">
-              “Travelling in the company of those we love is home in motion.”
+              "Travelling in the company of those we love is home in motion."
               <br /> <span className="font-medium">-Leigh Hunt</span>
             </blockquote>
 

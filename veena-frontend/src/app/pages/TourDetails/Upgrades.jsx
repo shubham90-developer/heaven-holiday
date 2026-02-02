@@ -1,9 +1,20 @@
 "use client";
 import React, { useState } from "react";
-
+import { useGetContactDetailsQuery } from "store/aboutUsApi/contactApi";
 const Upgrades = () => {
   const [activeTab, setActiveTab] = useState("flight");
-
+  const {
+    data: contact,
+    isLoading: contactLoading,
+    error: contactError,
+  } = useGetContactDetailsQuery();
+  if (contactLoading) {
+    return <p>loading</p>;
+  }
+  if (contactError) {
+    return <p>error</p>;
+  }
+  console.log("contact", contact);
   return (
     <section className="py-10 lg:px-0 px-4" id="upgrades">
       <div className="max-w-6xl mx-auto">
@@ -45,12 +56,18 @@ const Upgrades = () => {
             <p>
               Need to upgrade to business or first class? <br />
               Please get in touch with our team on{" "}
-              <a href="tel:1800227979" className="text-blue-600 font-medium">
-                1800 22 7979
+              <a
+                href={`tel:${contact.data.callUs.phoneNumbers[0]}`}
+                className="text-blue-600 font-medium"
+              >
+                {contact?.data?.callUs?.phoneNumbers[0]}
               </a>{" "}
               or{" "}
-              <a href="tel:18003135555" className="text-blue-600 font-medium">
-                1800 313 5555
+              <a
+                href={`tel:${contact.data.callUs.phoneNumbers[1]}`}
+                className="text-blue-600 font-medium"
+              >
+                {contact?.data?.callUs?.phoneNumbers[1]}
               </a>{" "}
               for more details.
             </p>
@@ -60,12 +77,18 @@ const Upgrades = () => {
             <p>
               Want to reserve the best seats on your flight? <br />
               Contact our team on{" "}
-              <a href="tel:1800227979" className="text-blue-600 font-medium">
-                1800 22 7979
+              <a
+                href={`tel:${contact.data.callUs.phoneNumbers[0]}`}
+                className="text-blue-600 font-medium"
+              >
+                {contact?.data?.callUs?.phoneNumbers[0]}
               </a>{" "}
               or{" "}
-              <a href="tel:18003135555" className="text-blue-600 font-medium">
-                1800 313 5555
+              <a
+                href={`tel:${contact.data.callUs.phoneNumbers[1]}`}
+                className="text-blue-600 font-medium"
+              >
+                {contact?.data?.callUs?.phoneNumbers[1]}
               </a>{" "}
               for availability and pricing.
             </p>

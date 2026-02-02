@@ -8,25 +8,52 @@ import {
   FaPlane,
   FaHeart,
   FaGift,
-  FaVideo,
-  FaEnvelope,
   FaCamera,
   FaCheck,
+  FaEnvelope,
 } from "react-icons/fa";
+import {
+  useGetProfileQuery,
+  useUploadProfileImageMutation,
+} from "store/authApi/authApi";
+
+import { auth } from "@/app/config/firebase";
 
 const Sidebar = () => {
-  const [profileImg, setProfileImg] = useState(null);
   const fileInputRef = useRef(null);
-  const pathname = usePathname(); // current route
+  const pathname = usePathname();
 
-  const handleFileChange = (e) => {
+  // Get user from Firebase
+  const user = auth.currentUser;
+
+  // Fetch profile data
+  const { data: profileData, isLoading } = useGetProfileQuery();
+  const [uploadProfileImage] = useUploadProfileImageMutation();
+
+  const userProfile = profileData?.data?.user;
+  const displayName = userProfile?.name || "User";
+  const email = userProfile?.email || user?.email || "No email";
+  const phone = userProfile?.phone || user?.phoneNumber || "No phone";
+  const profileImg = userProfile?.profileImg;
+
+  // Get initials for avatar
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 2);
+
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImg(reader.result);
-      };
-      reader.readAsDataURL(file);
+      try {
+        await uploadProfileImage(file).unwrap();
+        alert("Profile image updated successfully!");
+      } catch (error) {
+        console.error("Upload error:", error);
+        alert("Failed to upload image");
+      }
     }
   };
 
@@ -42,6 +69,17 @@ const Sidebar = () => {
     { icon: <FaGift />, label: "Gift Cards", url: "/account/gift-cards" },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="w-64 bg-white shadow-md rounded-lg p-6">
+        <div className="animate-pulse">
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto"></div>
+          <div className="h-4 bg-gray-200 rounded mt-4"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-64 bg-white shadow-md rounded-lg p-6">
       {/* Profile */}
@@ -55,12 +93,12 @@ const Sidebar = () => {
             />
           ) : (
             <div className="w-16 h-16 rounded-full bg-yellow-400 flex items-center justify-center text-2xl font-bold">
-              RJ
+              {initials}
             </div>
           )}
           <button
             onClick={() => fileInputRef.current.click()}
-            className="absolute bottom-0 right-0 bg-white p-1 rounded-full shadow-md text-gray-600 hover:text-blue-600"
+            className="absolute bottom-0 right-0 bg-white p-1 rounded-full shadow-md text-gray-600 hover:text-blue-600 cursor-pointer"
           >
             <FaCamera size={14} />
           </button>
@@ -73,11 +111,13 @@ const Sidebar = () => {
           />
         </div>
 
-        <h3 className="mt-3 font-semibold">Raj J</h3>
-        <p className="text-sm text-gray-600">user@gmail.com</p>
+        <h3 className="mt-3 font-semibold">{displayName}</h3>
+        <p className="text-sm text-gray-600">{email}</p>
         <p className="text-sm font-bold text-gray-600 flex items-center gap-1">
-          +91 9298400003
-          <FaCheck className="text-white text-md bg-green-400 p-1 rounded-full" />
+          {phone}
+          {userProfile?.phoneVerified && (
+            <FaCheck className="text-white text-md bg-green-400 p-1 rounded-full" />
+          )}
         </p>
       </div>
 

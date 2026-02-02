@@ -399,6 +399,11 @@ export const tourPackageCardSchema = z
     accommodations: z.array(accommodationSchema).optional().default([]),
 
     reportingDropping: z.array(reportingDroppingSchema).optional().default([]),
+    tourInclusions: z.string().trim().optional(),
+    tourExclusions: z.string().trim().optional(),
+    tourPrepartion: z.string().trim().optional(),
+    needToKnow: z.string().trim().optional(),
+    cancellationPolicy: z.string().trim().optional(),
   })
   .refine((data) => data.baseJoiningPrice <= data.baseFullPackagePrice, {
     message: 'Base joining price cannot exceed base full package price',

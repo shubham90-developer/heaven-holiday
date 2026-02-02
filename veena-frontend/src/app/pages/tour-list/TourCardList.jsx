@@ -10,76 +10,9 @@ import {
   PlaneTakeoff,
   User,
 } from "lucide-react";
-
-// ✅ Sample tours data
-const tours = [
-  {
-    id: 1,
-    title: "Kashmir Escape",
-    price: "₹30,000",
-    image: "/assets/img/tour-card/1.avif",
-    days: 5,
-    destinations: "3 Cities",
-    departures: "9 Dates",
-    dates: [
-      { date: "28 Sep 25", seats: 6 },
-      { date: "02 Nov 25", seats: 3 },
-      { date: "19 Dec 25", seats: 6 },
-    ],
-  },
-  {
-    id: 2,
-    title: "Leh Ladakh Adventure",
-    price: "₹45,000",
-    image: "/assets/img/tour-card/2.avif",
-    days: 7,
-    destinations: "5 Cities",
-    departures: "6 Dates",
-    dates: [
-      { date: "10 Oct 25", seats: 5 },
-      { date: "20 Nov 25", seats: 2 },
-    ],
-  },
-  {
-    id: 3,
-    title: "Kerala Backwaters",
-    price: "₹25,000",
-    image: "/assets/img/tour-card/3.avif",
-    days: 4,
-    destinations: "2 Cities",
-    departures: "3 Dates",
-    dates: [
-      { date: "15 Sep 25", seats: 10 },
-      { date: "05 Oct 25", seats: 4 },
-    ],
-  },
-  {
-    id: 4,
-    title: "Goa Beaches",
-    price: "₹20,000",
-    image: "/assets/img/tour-card/4.avif",
-    days: 3,
-    destinations: "1 City",
-    departures: "12 Dates",
-    dates: [
-      { date: "01 Nov 25", seats: 12 },
-      { date: "15 Nov 25", seats: 8 },
-    ],
-  },
-  {
-    id: 5,
-    title: "Goa Beaches",
-    price: "₹20,000",
-    image: "/assets/img/tour-card/1.avif",
-    days: 3,
-    destinations: "1 City",
-    departures: "12 Dates",
-    dates: [
-      { date: "01 Nov 25", seats: 12 },
-      { date: "15 Nov 25", seats: 8 },
-    ],
-  },
-];
+import { useParams } from "next/navigation";
+import { useGetCategoriesQuery } from "store/toursManagement/toursPackagesApi";
+import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
 
 const TourCard = ({ tour }) => {
   return (
@@ -87,7 +20,7 @@ const TourCard = ({ tour }) => {
       {/* Left Image */}
       <div className="relative w-full md:w-1/5 flex-shrink-0">
         <Image
-          src={tour.image}
+          src={tour.category?.image || "/assets/img/tour-card/1.avif"}
           alt={tour.title}
           width={600}
           height={600}
@@ -113,10 +46,10 @@ const TourCard = ({ tour }) => {
           {/* Labels */}
           <div className="flex gap-2 mb-1">
             <span className="border border-orange-500 text-orange-500 font-bold text-[10px] px-2 py-1 rounded">
-              GROUP TOUR
+              {tour.tourType?.toUpperCase() || "GROUP TOUR"}
             </span>
             <span className="bg-pink-100 text-pink-600 text-[10px] px-2 py-1 rounded">
-              Family
+              {tour.category?.name || "Family"}
             </span>
           </div>
 
@@ -133,34 +66,53 @@ const TourCard = ({ tour }) => {
             <div className="absolute -left-10 mt-2 hidden group-hover:block w-64 bg-white text-gray-800 text-sm rounded-lg p-4 shadow-lg border border-gray-200 z-50">
               <h4 className="font-semibold mb-3">Tour Includes</h4>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5" />
-                  <span>Hotel</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Cookie className="w-5 h-5" />
-                  <span>Meals</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <PlaneTakeoff className="w-5 h-5" />
-                  <span>Flight</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  <span>Sightseeing</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Bus className="w-5 h-5" />
-                  <span>Transport</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FaCcVisa className="w-5 h-5" />
-                  <span>Visa</span>
-                </div>
-                <div className="flex items-center gap-2 col-span-2">
-                  <User className="w-5 h-5" />
-                  <span>Tour Manager</span>
-                </div>
+                {tour.tourIncludes && tour.tourIncludes.length > 0 ? (
+                  tour.tourIncludes.map((include, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Image
+                        src={include.image}
+                        alt={include.title}
+                        width={20}
+                        height={20}
+                        className="w-5 h-5 object-cover"
+                      />
+                      <span>{include.title}</span>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-5 h-5" />
+                      <span>Hotel</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Cookie className="w-5 h-5" />
+                      <span>Meals</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <PlaneTakeoff className="w-5 h-5" />
+                      <span>Flight</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-5 h-5" />
+                      <span>Sightseeing</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Bus className="w-5 h-5" />
+                      <span>Transport</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaCcVisa className="w-5 h-5" />
+                      <span>Visa</span>
+                    </div>
+                  </>
+                )}
+                {tour.tourManagerIncluded && (
+                  <div className="flex items-center gap-2 col-span-2">
+                    <User className="w-5 h-5" />
+                    <span>Tour Manager</span>
+                  </div>
+                )}
               </div>
               <p className="text-red-600 text-xs mt-3">
                 *Economy class air travel included; taxes extra.
@@ -177,11 +129,16 @@ const TourCard = ({ tour }) => {
           </div>
           <div>
             <p>Destinations</p>
-            <span className="text-sky-600 font-bold">{tour.destinations}</span>
+            <span className="text-sky-600 font-bold">
+              {tour.metadata?.uniqueCities}{" "}
+              {tour.metadata?.uniqueCities === 1 ? "City" : "Cities"}
+            </span>
           </div>
           <div>
             <p>Departure</p>
-            <span className="text-sky-600 font-bold">{tour.departures}</span>
+            <span className="text-sky-600 font-bold">
+              {tour.metadata?.displayText}
+            </span>
           </div>
         </div>
 
@@ -189,11 +146,21 @@ const TourCard = ({ tour }) => {
         <div className="mt-3 text-xs">
           <p className="text-red-500 font-semibold">Dates Filling Fast</p>
           <div className="flex gap-4 mt-1 flex-wrap">
-            {tour.dates.map((d, i) => (
-              <span key={i} className="text-gray-700">
-                {d.date} <span className="text-red-500">({d.seats} seats)</span>
-              </span>
-            ))}
+            {tour.departures &&
+              tour.departures.slice(0, 3).map((d, i) => (
+                <span key={i} className="text-gray-700">
+                  {new Date(d.date)
+                    .toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "2-digit",
+                    })
+                    .replace(/ /g, " ")}{" "}
+                  <span className="text-red-500">
+                    ({d.availableSeats} seats)
+                  </span>
+                </span>
+              ))}
           </div>
         </div>
       </div>
@@ -201,25 +168,37 @@ const TourCard = ({ tour }) => {
       {/* Price */}
       <div className="md:w-1/4 w-full flex flex-col justify-center bg-blue-50 rounded-2xl items-center border border-gray-300 p-2 mt-4 md:mt-0">
         <p className="text-xs text-gray-600">Starts from</p>
-        <h3 className="text-sm font-bold text-black">{tour.price}</h3>
+        <h3 className="text-sm font-bold text-black">
+          ₹
+          {(tour.baseJoiningPrice || tour.baseFullPackagePrice)?.toLocaleString(
+            "en-IN",
+          )}
+        </h3>
         <p className="text-xs text-gray-500">per person on twin sharing</p>
         <p className="text-xs text-gray-500">
-          EMI from <span className="text-sky-600">₹1,012/mo</span>
+          EMI from{" "}
+          <span className="text-sky-600">
+            ₹
+            {Math.ceil(
+              (tour.baseJoiningPrice || tour.baseFullPackagePrice) / 12,
+            )?.toLocaleString("en-IN")}
+            /mo
+          </span>
         </p>
         <Link
-          href="tour-details"
+          href={`/tour-details/${tour._id}`}
           className="bg-red-700 text-center text-xs text-white hover:bg-red-500 w-full py-2 mt-2 rounded font-semibold cursor-pointer"
         >
           Book Online
         </Link>
         <Link
-          href="tour-details"
+          href={`/tour-details/${tour._id}`}
           className="border-blue-500 border text-center bg-white text-blue-500 text-xs w-full py-2 mt-2 rounded font-semibold"
         >
           View Tour Details
         </Link>
         <div className="mt-4 flex gap-6 text-xs">
-          <Link href="compare-tours" className="text-black">
+          <Link href="/compare-tours" className="text-black">
             🔄 Compare
           </Link>
           <Link href="#" className="text-black">
@@ -233,54 +212,105 @@ const TourCard = ({ tour }) => {
 
 // ✅ Main component: maps tours
 const TourCardList = () => {
+  const { id: categoryId } = useParams();
   const [currentPage, setCurrentPage] = useState(1);
   const toursPerPage = 5;
+
+  const {
+    data: categories,
+    isLoading: categoriesLoading,
+    error: categoryError,
+  } = useGetCategoriesQuery();
+
+  const {
+    data: tourpackage,
+    isLoading: tourpackageLoading,
+    error: tourpackageError,
+  } = useGetTourPackageQuery();
+
+  // Get category and filter tour packages
+  const category = categories?.data?.find((item) => {
+    return item._id === categoryId;
+  });
+
+  const categoryName = category?.name;
+
+  const tourPackages =
+    tourpackage?.data?.filter((item) => {
+      return item.category.name === categoryName;
+    }) || [];
+
+  console.log("tourPackages", tourPackages);
 
   // Calculate index range
   const indexOfLast = currentPage * toursPerPage;
   const indexOfFirst = indexOfLast - toursPerPage;
-  const currentTours = tours.slice(indexOfFirst, indexOfLast);
+  const currentTours = tourPackages.slice(indexOfFirst, indexOfLast);
 
-  const totalPages = Math.ceil(tours.length / toursPerPage);
+  const totalPages = Math.ceil(tourPackages.length / toursPerPage);
+
+  // Loading state
+  if (categoriesLoading || tourpackageLoading) {
+    return <div className="text-center py-8">Loading tours...</div>;
+  }
+
+  // Error state
+  if (categoryError || tourpackageError) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        Error loading tours. Please try again.
+      </div>
+    );
+  }
+
+  // No tours found
+  if (tourPackages.length === 0) {
+    return (
+      <div className="text-center py-8">No tours found for this category.</div>
+    );
+  }
+
   return (
     <div>
       {/* Render tours */}
       {currentTours.map((tour) => (
-        <TourCard key={tour.id} tour={tour} />
+        <TourCard key={tour._id} tour={tour} />
       ))}
 
       {/* Pagination Controls */}
-      <div className="flex justify-center items-center gap-2 mt-4">
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1 border text-xs cursor-pointer rounded disabled:opacity-50"
-        >
-          Prev
-        </button>
-
-        {Array.from({ length: totalPages }, (_, i) => (
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-4">
           <button
-            key={i + 1}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 border rounded-full cursor-pointer ${
-              currentPage === i + 1
-                ? "bg-blue-900 text-white"
-                : "bg-white text-black"
-            }`}
+            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border text-xs cursor-pointer rounded disabled:opacity-50"
           >
-            {i + 1}
+            Prev
           </button>
-        ))}
 
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 border text-xs rounded cursor-pointer  disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`px-3 py-1 border rounded-full cursor-pointer ${
+                currentPage === i + 1
+                  ? "bg-blue-900 text-white"
+                  : "bg-white text-black"
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 border text-xs rounded cursor-pointer disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };

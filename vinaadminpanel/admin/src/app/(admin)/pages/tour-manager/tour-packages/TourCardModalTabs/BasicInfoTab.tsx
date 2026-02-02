@@ -151,23 +151,23 @@ const BasicInfoTab = ({
         </Col>
       </Row>
 
-      <Row>
-        <Col md={12}>
-          <Form.Group className="mb-3">
-            <Form.Label>Meta Description</Form.Label>
-            <div style={{ height: "200px" }}>
-              <ReactQuill
-                theme="snow"
-                value={tourMetaDescription}
-                onChange={setTourMetaDescription}
-                modules={modules}
-                placeholder="Enter meta description..."
-                style={{ height: "150px", marginBottom: "50px" }}
-              />
-            </div>
-          </Form.Group>
-        </Col>
-      </Row>
+      <div className="w-full">
+        <div className="w-full mb-3">
+          <label className="block mb-2 text-sm font-medium text-gray-700">
+            Description
+          </label>
+          <div className="w-full">
+            <ReactQuill
+              theme="snow"
+              value={tourMetaDescription}
+              onChange={setTourMetaDescription}
+              modules={modules}
+              placeholder="Enter description..."
+              className="w-full bg-white rounded-lg"
+            />
+          </div>
+        </div>
+      </div>
 
       <Row>
         <Col md={6}>

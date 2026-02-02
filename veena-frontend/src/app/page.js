@@ -20,6 +20,9 @@ import PackagesCard from "@/app/pages/Hero/PackagesCard";
 export default function Home() {
   return (
     <>
+      {/* Hidden reCAPTCHA container for Firebase */}
+      <div id="recaptcha-container" style={{ display: "none" }}></div>
+
       <HeroBanner />
       <Tourscards />
       <TravalPlanCards />

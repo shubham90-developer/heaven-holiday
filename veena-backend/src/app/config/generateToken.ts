@@ -1,7 +1,7 @@
 // utils/generateToken.ts
 import jwt from 'jsonwebtoken';
-import { IUser } from '../modules/auth/auth.model';
-export const generateToken = (user: IUser ) => {
+import { IUser } from '../modules/auth/authInterface';
+export const generateToken = (user: IUser) => {
   const payload = {
     userId: user._id,
     name: user.name,
@@ -13,4 +13,3 @@ export const generateToken = (user: IUser ) => {
 };
 
 // test
-

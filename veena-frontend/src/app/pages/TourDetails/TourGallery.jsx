@@ -7,17 +7,9 @@ import { Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 
-const TourGallery = () => {
-  // All gallery images
-  const images = [
-    "/assets/img/tour-review/1.avif",
-    "/assets/img/tour-review/3.avif",
-    "/assets/img/tour-review/4.webp",
-    "/assets/img/tour-review/5.webp",
-    "/assets/img/tour-review/6.webp",
-    "/assets/img/tour-review/7.webp",
-    "/assets/img/tour-review/8.webp",
-  ];
+const TourGallery = ({ galleryImages = [] }) => {
+  // Use provided gallery images or fallback to default images
+  const images = galleryImages && galleryImages.length > 0 ? galleryImages : [];
 
   const [isOpen, setIsOpen] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
@@ -46,21 +38,23 @@ const TourGallery = () => {
         ))}
 
         {/* Last Thumbnail shows remaining count */}
-        <div
-          onClick={() => openGallery(3)}
-          className="relative w-full h-20 bg-gray-200 rounded-lg overflow-hidden cursor-pointer"
-        >
-          <Image
-            src={images[3]}
-            alt="More Photos"
-            width={600}
-            height={600}
-            className="absolute inset-0 w-full h-full object-cover rounded-lg opacity-70"
-          />
-          <span className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm bg-black/40">
-            +{images.length - 3} more
-          </span>
-        </div>
+        {images.length > 3 && (
+          <div
+            onClick={() => openGallery(3)}
+            className="relative w-full h-20 bg-gray-200 rounded-lg overflow-hidden cursor-pointer"
+          >
+            <Image
+              src={images[3]}
+              alt="More Photos"
+              width={600}
+              height={600}
+              className="absolute inset-0 w-full h-full object-cover rounded-lg opacity-70"
+            />
+            <span className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm bg-black/40">
+              +{images.length - 3} more
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Fullscreen Modal with Slider */}
