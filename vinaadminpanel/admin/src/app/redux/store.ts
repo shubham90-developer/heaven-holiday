@@ -48,6 +48,7 @@ import { applicationApi } from "./api/application-process/applicationProcessApi"
 import { cardApi } from "./api/become-partner/becomePartnerApi";
 import { becomePartnerFormApi } from "./api/become-partner/formApi";
 import { includesApi } from "./api/tourManager/includes";
+import { bookingApi } from "./api/bookingsApi/bookingApi";
 export const store = configureStore({
   reducer: {
     [aboutUsApi.reducerPath]: aboutUsApi.reducer,
@@ -101,6 +102,7 @@ export const store = configureStore({
     [cardApi.reducerPath]: cardApi.reducer,
     [becomePartnerFormApi.reducerPath]: becomePartnerFormApi.reducer,
     [includesApi.reducerPath]: includesApi.reducer,
+    [bookingApi.reducerPath]: bookingApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -154,7 +156,8 @@ export const store = configureStore({
       .concat(applicationApi.middleware)
       .concat(cardApi.middleware)
       .concat(becomePartnerFormApi.middleware)
-      .concat(includesApi.middleware),
+      .concat(includesApi.middleware)
+      .concat(bookingApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

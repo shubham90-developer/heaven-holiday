@@ -141,6 +141,12 @@ export const MENU_ITEMS: MenuItemType[] = [
     icon: "tabler:package",
     url: "/pages/tour-manager/tour-packages",
   },
+  {
+    key: "bookings",
+    label: "Tour Bookings",
+    icon: "tabler:package",
+    url: "/pages/tour-bookings",
+  },
 
   {
     key: "travel-deals",
