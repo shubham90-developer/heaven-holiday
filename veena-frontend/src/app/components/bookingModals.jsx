@@ -9,13 +9,17 @@ import {
 } from "react-icons/fa";
 import { useCreateBookingMutation } from "store/bookingApi/bookingApi";
 import DepartureSelector from "../pages/TourDetails/DepartureSelector";
-
+import toast from "react-hot-toast";
 const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [createBooking, { isLoading, isSuccess, data: bookingData }] =
     useCreateBookingMutation();
   const userId = localStorage.getItem("userId");
   console.log("userId", userId);
+
+  // NEW STATE: Track which traveler forms are open
+  const [openTravelerForms, setOpenTravelerForms] = useState([]);
+
   const [formData, setFormData] = useState({
     // Step 1: Departure & City
     selectedDeparture: null,
@@ -44,16 +48,20 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
 
   const [errors, setErrors] = useState({});
 
-  // Calculate pricing when departure or traveler count changes
   useEffect(() => {
     if (formData.selectedDeparture) {
+      const selectedDeparture = tourData?.departures?.find(
+        (d) => d._id === formData.selectedDeparture.departureId,
+      );
+
       const basePrice =
         formData.packageType === "Full Package"
-          ? tourData?.baseFullPackagePrice || 30000
-          : tourData?.baseJoiningPrice || 25000;
+          ? selectedDeparture?.fullPackagePrice ||
+            tourData?.baseFullPackagePrice
+          : selectedDeparture?.joiningPrice || tourData?.baseJoiningPrice;
 
       const totalAmount = basePrice * formData.travelerCount.total;
-      const advanceAmount = Math.ceil(totalAmount * 0.25); // 25% advance
+      const advanceAmount = Math.ceil(totalAmount * 0.25);
 
       setFormData((prev) => ({
         ...prev,
@@ -70,6 +78,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     formData.selectedDeparture,
     formData.travelerCount,
     formData.packageType,
+    tourData, // ✅ STEP 2C: Add tourData to dependencies
   ]);
 
   // Initialize travelers array when count changes
@@ -119,7 +128,31 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     }
 
     setFormData((prev) => ({ ...prev, travelers }));
+    // Reset open forms when traveler count changes
+    setOpenTravelerForms([]);
   }, [formData.travelerCount]);
+  // Add this after your other useEffects
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+  useEffect(() => {
+    if (isSuccess && bookingData) {
+      resetForm();
+      onClose();
+    }
+  }, [isSuccess, bookingData]);
+  // Auto-open first traveler form when reaching step 3
+  useEffect(() => {
+    if (
+      currentStep === 3 &&
+      openTravelerForms.length === 0 &&
+      formData.travelers.length > 0
+    ) {
+      setOpenTravelerForms([0]); // Open first traveler form automatically
+    }
+  }, [currentStep, formData.travelers.length]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -195,6 +228,36 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     });
   };
 
+  // NEW FUNCTION: Toggle traveler form open/close
+  const toggleTravelerForm = (index) => {
+    if (openTravelerForms.includes(index)) {
+      setOpenTravelerForms(openTravelerForms.filter((i) => i !== index));
+    } else {
+      setOpenTravelerForms([...openTravelerForms, index]);
+    }
+  };
+
+  // NEW FUNCTION: Close specific traveler form
+  const closeTravelerForm = (index) => {
+    setOpenTravelerForms(openTravelerForms.filter((i) => i !== index));
+  };
+
+  // NEW FUNCTION: Check if traveler form is filled
+  const isTravelerFormFilled = (traveler) => {
+    const basicFieldsFilled =
+      traveler.firstName &&
+      traveler.lastName &&
+      traveler.dateOfBirth &&
+      traveler.title &&
+      traveler.gender;
+
+    if (traveler.isLeadTraveler) {
+      return basicFieldsFilled && traveler.email && traveler.phone;
+    }
+
+    return basicFieldsFilled;
+  };
+
   // Validation functions
   const validateStep1 = () => {
     const newErrors = {};
@@ -257,7 +320,30 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
       setCurrentStep(currentStep + 1);
     }
   };
-
+  // Add this near your other functions (after handleBack)
+  const resetForm = () => {
+    setCurrentStep(1);
+    setFormData({
+      selectedDeparture: null,
+      packageType: "Joining Package",
+      travelerCount: {
+        adults: 1,
+        children: 0,
+        infants: 0,
+        total: 1,
+      },
+      travelers: [],
+      pricing: {
+        totalAmount: 0,
+        advanceAmount: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        pricePerPerson: 0,
+      },
+    });
+    setOpenTravelerForms([]);
+    setErrors({});
+  };
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -268,13 +354,13 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
   const handleSubmit = async () => {
     const token = localStorage.getItem("authToken");
     if (!token) {
-      alert("Please login first!");
+      toast.alert("Please login first!");
       return;
     }
 
     const userId = localStorage.getItem("userId");
     if (!userId) {
-      alert("User not logged in. Please login again.");
+      toast.alert("User not logged in. Please login again.");
       return;
     }
 
@@ -282,7 +368,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
       // Find the lead traveler
       const leadTraveler = formData.travelers.find((t) => t.isLeadTraveler);
       if (!leadTraveler) {
-        alert("Please select a lead traveler");
+        toast.alert("Please select a lead traveler");
         return;
       }
 
@@ -320,17 +406,18 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
       // Call backend API
       const result = await createBooking(bookingPayload).unwrap();
 
-      alert("Booking created successfully!");
+      toast.success("Booking created successfully!");
       onClose();
     } catch (error) {
-      alert(`Booking failed: ${error?.data?.message || "Please try again"}`);
+      toast.success(
+        `Booking failed: ${error?.data?.message || "Please try again"}`,
+      );
     }
   };
 
   // Handle successful booking
   useEffect(() => {
     if (isSuccess && bookingData) {
-      alert("Booking created successfully! Redirecting to payment...");
       // Here you can redirect to payment page or open payment modal
       onClose();
     }
@@ -346,7 +433,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl max-w-7xl w-full my-8 max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-xl max-w-8xl w-full my-8 max-h-[100vh] overflow-hidden flex flex-col hidden:scrollbar">
         {/* Header */}
         <div className="border-b p-4 flex justify-between items-center flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-800">
@@ -354,7 +441,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
+            className="text-gray-500 hover:text-gray-700 text-2xl cursor-pointer"
           >
             <FaTimes />
           </button>
@@ -369,9 +456,9 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
                       currentStep > step.id
-                        ? "bg-green-500 text-white"
+                        ? "bg-green-300 text-white"
                         : currentStep === step.id
-                          ? "bg-blue-600 text-white"
+                          ? "bg-red-600 text-white"
                           : "bg-gray-300 text-gray-600"
                     }`}
                   >
@@ -382,7 +469,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                 {index < steps.length - 1 && (
                   <div
                     className={`flex-1 h-1 mx-2 ${
-                      currentStep > step.id ? "bg-green-500" : "bg-gray-300"
+                      currentStep > step.id ? "bg-green-300" : "bg-gray-300"
                     }`}
                   />
                 )}
@@ -597,233 +684,339 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                 </div>
               )}
 
-              {/* Step 3: Traveler Details */}
+              {/* Step 3: Traveler Details - UPDATED SECTION */}
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold mb-4">
                     Traveler Details
                   </h3>
 
-                  {formData.travelers.map((traveler, index) => (
-                    <div
-                      key={index}
-                      className="border rounded-lg p-4 space-y-4"
-                    >
-                      <div className="flex items-center gap-2 mb-4">
-                        <FaUser className="text-blue-600" />
-                        <h4 className="font-semibold">
-                          {traveler.type} {index + 1}
-                          {traveler.isLeadTraveler && (
-                            <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                              Lead Traveler
+                  {formData.travelers.map((traveler, index) => {
+                    const isFormOpen = openTravelerForms.includes(index);
+                    const isFormFilled = isTravelerFormFilled(traveler);
+
+                    return (
+                      <div
+                        key={index}
+                        className="border rounded-lg p-4 space-y-4"
+                      >
+                        {/* BUTTON TO OPEN/SHOW FORM */}
+                        {!isFormOpen && (
+                          <button
+                            onClick={() => toggleTravelerForm(index)}
+                            className={`w-full p-4 rounded-lg border-2 border-dashed flex items-center justify-between transition-all ${
+                              isFormFilled
+                                ? "bg-green-50 border-green-300 hover:bg-green-100"
+                                : "bg-gray-50 border-gray-300 hover:bg-gray-100"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                  isFormFilled
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-300 text-gray-600"
+                                }`}
+                              >
+                                {isFormFilled ? <FaCheckCircle /> : <FaUser />}
+                              </div>
+                              <div className="text-left">
+                                <p className="font-semibold text-gray-800">
+                                  {traveler.type} {index + 1}
+                                  {traveler.isLeadTraveler && (
+                                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                      Lead Traveler
+                                    </span>
+                                  )}
+                                </p>
+                                {isFormFilled && (
+                                  <p className="text-sm text-gray-600">
+                                    {traveler.title} {traveler.firstName}{" "}
+                                    {traveler.lastName}
+                                  </p>
+                                )}
+                                {!isFormFilled && (
+                                  <p className="text-sm text-gray-500">
+                                    Click to add details
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <span
+                              className={`font-medium ${
+                                isFormFilled
+                                  ? "text-green-600"
+                                  : "text-blue-600"
+                              }`}
+                            >
+                              {isFormFilled
+                                ? "✓ Edit Details"
+                                : "+ Add Details"}
                             </span>
-                          )}
-                        </h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Title */}
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            Title <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={traveler.title}
-                            onChange={(e) =>
-                              handleTravelerChange(
-                                index,
-                                "title",
-                                e.target.value,
-                              )
-                            }
-                            className="w-full p-2 border rounded"
-                          >
-                            <option value="">Select</option>
-                            <option value="Mr">Mr</option>
-                            <option value="Mrs">Mrs</option>
-                            <option value="Ms">Ms</option>
-                            <option value="Master">Master</option>
-                            <option value="Miss">Miss</option>
-                          </select>
-                          {errors[`traveler_${index}_title`] && (
-                            <p className="text-red-600 text-xs mt-1">
-                              {errors[`traveler_${index}_title`]}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* First Name */}
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            First Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={traveler.firstName}
-                            onChange={(e) =>
-                              handleTravelerChange(
-                                index,
-                                "firstName",
-                                e.target.value,
-                              )
-                            }
-                            className="w-full p-2 border rounded"
-                            placeholder="First Name"
-                          />
-                          {errors[`traveler_${index}_firstName`] && (
-                            <p className="text-red-600 text-xs mt-1">
-                              {errors[`traveler_${index}_firstName`]}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Last Name */}
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            Last Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={traveler.lastName}
-                            onChange={(e) =>
-                              handleTravelerChange(
-                                index,
-                                "lastName",
-                                e.target.value,
-                              )
-                            }
-                            className="w-full p-2 border rounded"
-                            placeholder="Last Name"
-                          />
-                          {errors[`traveler_${index}_lastName`] && (
-                            <p className="text-red-600 text-xs mt-1">
-                              {errors[`traveler_${index}_lastName`]}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Date of Birth */}
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            Date of Birth{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="date"
-                            value={traveler.dateOfBirth}
-                            onChange={(e) =>
-                              handleTravelerChange(
-                                index,
-                                "dateOfBirth",
-                                e.target.value,
-                              )
-                            }
-                            className="w-full p-2 border rounded"
-                          />
-                          {errors[`traveler_${index}_dob`] && (
-                            <p className="text-red-600 text-xs mt-1">
-                              {errors[`traveler_${index}_dob`]}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Age */}
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            Age
-                          </label>
-                          <input
-                            type="number"
-                            value={traveler.age}
-                            readOnly
-                            className="w-full p-2 border rounded bg-gray-50"
-                            placeholder="Auto-calculated"
-                          />
-                        </div>
-
-                        {/* Gender */}
-                        <div>
-                          <label className="block text-sm font-medium mb-1">
-                            Gender <span className="text-red-500">*</span>
-                          </label>
-                          <select
-                            value={traveler.gender}
-                            onChange={(e) =>
-                              handleTravelerChange(
-                                index,
-                                "gender",
-                                e.target.value,
-                              )
-                            }
-                            className="w-full p-2 border rounded"
-                          >
-                            <option value="">Select</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                          </select>
-                          {errors[`traveler_${index}_gender`] && (
-                            <p className="text-red-600 text-xs mt-1">
-                              {errors[`traveler_${index}_gender`]}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Email (Lead Traveler Only) */}
-                        {traveler.isLeadTraveler && (
-                          <div>
-                            <label className="block text-sm font-medium mb-1">
-                              Email <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="email"
-                              value={traveler.email || ""}
-                              onChange={(e) =>
-                                handleTravelerChange(
-                                  index,
-                                  "email",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full p-2 border rounded"
-                              placeholder="email@example.com"
-                            />
-                            {errors[`traveler_${index}_email`] && (
-                              <p className="text-red-600 text-xs mt-1">
-                                {errors[`traveler_${index}_email`]}
-                              </p>
-                            )}
-                          </div>
+                          </button>
                         )}
 
-                        {/* Phone (Lead Traveler Only) */}
-                        {traveler.isLeadTraveler && (
-                          <div>
-                            <label className="block text-sm font-medium mb-1">
-                              Phone <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="tel"
-                              value={traveler.phone || ""}
-                              onChange={(e) =>
-                                handleTravelerChange(
-                                  index,
-                                  "phone",
-                                  e.target.value,
-                                )
-                              }
-                              className="w-full p-2 border rounded"
-                              placeholder="+91 9876543210"
-                            />
-                            {errors[`traveler_${index}_phone`] && (
-                              <p className="text-red-600 text-xs mt-1">
-                                {errors[`traveler_${index}_phone`]}
-                              </p>
-                            )}
+                        {/* THE ACTUAL FORM (only shows when button is clicked) */}
+                        {isFormOpen && (
+                          <div className="space-y-4">
+                            {/* Title with Close Button */}
+                            <div className="flex items-center justify-between mb-4 pb-3 border-b">
+                              <div className="flex items-center gap-2">
+                                <FaUser className="text-red-600" />
+                                <h4 className="font-semibold text-gray-800">
+                                  {traveler.type} {index + 1}
+                                  {traveler.isLeadTraveler && (
+                                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                      Lead Traveler
+                                    </span>
+                                  )}
+                                </h4>
+                              </div>
+                              <button
+                                onClick={() => closeTravelerForm(index)}
+                                className="text-gray-500 hover:text-gray-700 p-1"
+                                title="Close form"
+                              >
+                                <FaTimes size={18} />
+                              </button>
+                            </div>
+
+                            {/* All the form fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Title */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Title <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                  value={traveler.title}
+                                  onChange={(e) =>
+                                    handleTravelerChange(
+                                      index,
+                                      "title",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  <option value="">Select</option>
+                                  <option value="Mr">Mr</option>
+                                  <option value="Mrs">Mrs</option>
+                                  <option value="Ms">Ms</option>
+                                  <option value="Master">Master</option>
+                                  <option value="Miss">Miss</option>
+                                </select>
+                                {errors[`traveler_${index}_title`] && (
+                                  <p className="text-red-600 text-xs mt-1">
+                                    {errors[`traveler_${index}_title`]}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* First Name */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  First Name{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={traveler.firstName}
+                                  onChange={(e) =>
+                                    handleTravelerChange(
+                                      index,
+                                      "firstName",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="First Name"
+                                />
+                                {errors[`traveler_${index}_firstName`] && (
+                                  <p className="text-red-600 text-xs mt-1">
+                                    {errors[`traveler_${index}_firstName`]}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Last Name */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Last Name{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={traveler.lastName}
+                                  onChange={(e) =>
+                                    handleTravelerChange(
+                                      index,
+                                      "lastName",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Last Name"
+                                />
+                                {errors[`traveler_${index}_lastName`] && (
+                                  <p className="text-red-600 text-xs mt-1">
+                                    {errors[`traveler_${index}_lastName`]}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Date of Birth */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Date of Birth{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="date"
+                                  value={traveler.dateOfBirth}
+                                  onChange={(e) =>
+                                    handleTravelerChange(
+                                      index,
+                                      "dateOfBirth",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                                {errors[`traveler_${index}_dob`] && (
+                                  <p className="text-red-600 text-xs mt-1">
+                                    {errors[`traveler_${index}_dob`]}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Age */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Age
+                                </label>
+                                <input
+                                  type="number"
+                                  value={traveler.age}
+                                  readOnly
+                                  className="w-full p-2 border rounded bg-gray-50"
+                                  placeholder="Auto-calculated"
+                                />
+                              </div>
+
+                              {/* Gender */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Gender <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                  value={traveler.gender}
+                                  onChange={(e) =>
+                                    handleTravelerChange(
+                                      index,
+                                      "gender",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  <option value="">Select</option>
+                                  <option value="Male">Male</option>
+                                  <option value="Female">Female</option>
+                                </select>
+                                {errors[`traveler_${index}_gender`] && (
+                                  <p className="text-red-600 text-xs mt-1">
+                                    {errors[`traveler_${index}_gender`]}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Email (Lead Traveler Only) */}
+                              {traveler.isLeadTraveler && (
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">
+                                    Email{" "}
+                                    <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="email"
+                                    value={traveler.email || ""}
+                                    onChange={(e) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "email",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="email@example.com"
+                                  />
+                                  {errors[`traveler_${index}_email`] && (
+                                    <p className="text-red-600 text-xs mt-1">
+                                      {errors[`traveler_${index}_email`]}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Phone (Lead Traveler Only) */}
+                              {traveler.isLeadTraveler && (
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">
+                                    Phone{" "}
+                                    <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="tel"
+                                    value={traveler.phone || ""}
+                                    onChange={(e) =>
+                                      handleTravelerChange(
+                                        index,
+                                        "phone",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="+91 9876543210"
+                                  />
+                                  {errors[`traveler_${index}_phone`] && (
+                                    <p className="text-red-600 text-xs mt-1">
+                                      {errors[`traveler_${index}_phone`]}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Save Button */}
+                            <div className="flex justify-end gap-3 pt-4 border-t">
+                              <button
+                                onClick={() => closeTravelerForm(index)}
+                                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => {
+                                  // Validate this traveler's form before closing
+                                  if (isTravelerFormFilled(traveler)) {
+                                    closeTravelerForm(index);
+                                  } else {
+                                    toast.error(
+                                      "Please fill all required fields before saving",
+                                    );
+                                  }
+                                }}
+                                className="w-50 py-2 bg-red-700 rounded-lg font-medium hover:bg-red-500 text-white transition cursor-pointer"
+                              >
+                                Save Details
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -832,7 +1025,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
             <div className="lg:col-span-1">
               <div className="bg-white p-5 rounded-xl shadow border border-gray-200 sticky top-4">
                 <h2 className="flex items-center gap-2 font-semibold text-lg mb-4 border-b pb-2">
-                  <FaCalendar className="text-blue-600" />
+                  <FaCalendar className="text-red-500" />
                   BOOKING SUMMARY
                 </h2>
 
@@ -929,7 +1122,13 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                     <h4 className="text-sm font-semibold mb-2">Travelers:</h4>
                     <div className="space-y-1">
                       {formData.travelers.map((traveler, index) => (
-                        <div key={index} className="text-xs text-gray-600">
+                        <div
+                          key={index}
+                          className="text-xs text-gray-600 flex items-center gap-2"
+                        >
+                          {isTravelerFormFilled(traveler) && (
+                            <FaCheckCircle className="text-green-500 flex-shrink-0" />
+                          )}
                           {traveler.firstName && traveler.lastName ? (
                             <>
                               {index + 1}. {traveler.title} {traveler.firstName}{" "}
@@ -972,7 +1171,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
           {currentStep < 3 ? (
             <button
               onClick={handleNext}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+              className="py-2 w-50 bg-red-700 rounded-lg font-medium hover:bg-red-500 text-white transition cursor-pointer"
             >
               Next
             </button>

@@ -1,15 +1,19 @@
+import {
+  TErrorSources,
+  TGenericErrorResponse,
+} from '../interface/error.interface';
 
-import { TErrorSources, TGenericErrorResponse } from "../interface/error.interface";
 const handleDuplicateError = (err: any): TGenericErrorResponse => {
-  // check match
-  const match = err.message.match(/"([^"]*)"/);
+  // Extract field name from keyPattern
+  const field = Object.keys(err.keyPattern || {})[0] || 'unknown';
 
-  const extractedMessage = match && match[1];
+  // Extract value from keyValue
+  const value = err.keyValue?.[field] || 'unknown';
 
   const errorSources: TErrorSources = [
     {
-      path: "",
-      message: extractedMessage ? `${extractedMessage} already exists` : 'Duplicate key value',
+      path: field, // ✅ NOW shows which field!
+      message: `${field}: "${value}" already exists`,
     },
   ];
 
@@ -17,7 +21,7 @@ const handleDuplicateError = (err: any): TGenericErrorResponse => {
 
   return {
     statusCode,
-    message: extractedMessage ? `${extractedMessage} already exists` : 'Duplicate key error',
+    message: `Duplicate ${field} error`, // ✅ Clear message
     errorSources,
   };
 };

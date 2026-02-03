@@ -208,7 +208,7 @@ const DepartureSelector = ({ departures = [], onDateSelect }) => {
               All inclusive tours, lock in at this great price today.
             </p>
           </div>
-          <p className="text-purple-600 cursor-pointer">Celebrations</p>
+          {/* <p className="text-purple-600 cursor-pointer">Celebrations</p> */}
         </div>
 
         {/* Month + Date Cards */}

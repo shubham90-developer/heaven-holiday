@@ -6,6 +6,7 @@ import FooterInfo from "@/app/components/FooterInfo";
 import FooterContactInfo from "@/app/components/FooterContactInfo";
 import Footer from "@/app/components/Footer";
 import ReduxProvider from "../../providers/reduxProvider";
+import { Toaster } from "react-hot-toast";
 
 // Configure Jura font
 const jura = Jura({
@@ -22,6 +23,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <Toaster position="top-right" />
       <ReduxProvider>
         <body className={`${jura.variable} antialiased`}>
           <TopNavBar />

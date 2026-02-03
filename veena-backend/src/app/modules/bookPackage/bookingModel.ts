@@ -164,45 +164,44 @@ const PricingSchema = new Schema<IPricing>(
   { _id: false },
 );
 
-const PaymentSchema = new Schema<IPayment>(
-  {
-    paymentId: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    paymentMethod: {
-      type: String,
-      enum: ['Cash', 'Card', 'UPI', 'Net Banking', 'Wallet'],
-      required: true,
-    },
-    paymentStatus: {
-      type: String,
-      enum: ['Pending', 'Success', 'Failed'],
-      default: 'Pending',
-      required: true,
-    },
-    paymentDate: {
-      type: Date,
-      default: Date.now,
-      required: true,
-    },
-    transactionId: {
-      type: String,
-      trim: true,
-    },
-    remarks: {
-      type: String,
-      trim: true,
-    },
-  },
-  { _id: true },
-);
+// const PaymentSchema = new Schema<IPayment>(
+//   {
+//     paymentId: {
+//       type: String,
+//       required: true,
+//     },
+//     amount: {
+//       type: Number,
+//       required: true,
+//       min: 0,
+//     },
+//     paymentMethod: {
+//       type: String,
+//       enum: ['Cash', 'Card', 'UPI', 'Net Banking', 'Wallet'],
+//       required: true,
+//     },
+//     paymentStatus: {
+//       type: String,
+//       enum: ['Pending', 'Success', 'Failed'],
+//       default: 'Pending',
+//       required: true,
+//     },
+//     paymentDate: {
+//       type: Date,
+//       default: Date.now,
+//       required: true,
+//     },
+//     transactionId: {
+//       type: String,
+//       trim: true,
+//     },
+//     remarks: {
+//       type: String,
+//       trim: true,
+//     },
+//   },
+//   { _id: true },
+// );
 
 // ========== MAIN BOOKING SCHEMA ==========
 
@@ -271,10 +270,10 @@ const BookingSchema = new Schema<IBooking>(
       index: true,
     },
 
-    payments: {
-      type: [PaymentSchema],
-      default: [],
-    },
+    // payments: {
+    //   type: [PaymentSchema],
+    //   default: [],
+    // },
 
     // Status
     bookingStatus: {

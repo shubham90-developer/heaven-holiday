@@ -42,17 +42,7 @@ const travelerSchema = z.object({
     .union([z.string().email('Invalid email format'), z.literal('')])
     .optional(),
 
-  phone: z
-    .union([
-      z
-        .string()
-        .regex(
-          /^[6-9]\d{9}$/,
-          'Phone number must be a valid 10-digit Indian number',
-        ),
-      z.literal(''),
-    ])
-    .optional(),
+  phone: z.string().optional(),
 });
 
 // ========== SELECTED DEPARTURE ==========
@@ -222,28 +212,76 @@ export const createBookingSchema = z
     },
   )
 
-  .refine(
-    (data) => {
-      const lead = data.travelers.find((t) => t.isLeadTraveler);
-      return lead && (lead.email || lead.phone);
-    },
-    { message: 'Lead traveler must have email or phone', path: ['travelers'] },
-  )
-
   .refine((data) => data.pricing.advanceAmount <= data.pricing.totalAmount, {
     message: 'Advance amount cannot exceed total amount',
     path: ['pricing', 'advanceAmount'],
-  })
+  });
 
+// ========== CANCEL BOOKING SCHEMA (IMPROVED) ==========
+
+// ========== UPDATE BOOKING TRAVELERS SCHEMA ==========
+export const updateBookingTravelersSchema = z
+  .object({
+    travelers: z
+      .array(
+        z.object({
+          type: z.enum(['Adult', 'Child', 'Infant'], {
+            message: 'Traveler type must be Adult, Child, or Infant',
+          }),
+
+          title: z.enum(['Mr', 'Mrs', 'Ms', 'Master', 'Miss'], {
+            message: 'Invalid title',
+          }),
+
+          firstName: z
+            .string()
+            .min(2, { message: 'First name must be at least 2 characters' })
+            .max(50, { message: 'First name cannot exceed 50 characters' })
+            .trim(),
+
+          lastName: z
+            .string()
+            .min(2, { message: 'Last name must be at least 2 characters' })
+            .max(50, { message: 'Last name cannot exceed 50 characters' })
+            .trim(),
+
+          dateOfBirth: z.coerce.date().refine((date) => date < new Date(), {
+            message: 'Date of birth must be in the past',
+          }),
+
+          age: z.coerce
+            .number()
+            .int({ message: 'Age must be a whole number' })
+            .min(0, { message: 'Age cannot be negative' })
+            .max(120, { message: 'Age cannot exceed 120' }),
+
+          gender: z.enum(['Male', 'Female'], {
+            message: 'Gender must be Male or Female',
+          }),
+
+          isLeadTraveler: z.boolean().default(false),
+
+          email: z
+            .union([z.string().email('Invalid email format'), z.literal('')])
+            .optional(),
+
+          phone: z.string().optional(),
+        }),
+      )
+      .min(1, { message: 'At least one traveler is required' })
+      .max(20, { message: 'Cannot update more than 20 travelers' }),
+  })
+  // Ensure exactly one lead traveler
+  .refine((data) => data.travelers.some((t) => t.isLeadTraveler), {
+    message: 'At least one lead traveler is required',
+    path: ['travelers'],
+  })
   .refine(
-    (data) =>
-      data.travelers.every(
-        (t) =>
-          (t.type === 'Adult' && t.age >= 12) ||
-          (t.type === 'Child' && t.age >= 2 && t.age < 12) ||
-          (t.type === 'Infant' && t.age < 2),
-      ),
-    { message: 'Traveler age does not match type', path: ['travelers'] },
+    (data) => data.travelers.filter((t) => t.isLeadTraveler).length === 1,
+    {
+      message: 'Only one lead traveler is allowed',
+      path: ['travelers'],
+    },
   );
 
 // ========== OTHER SCHEMAS ==========
@@ -276,10 +314,6 @@ export const getBookingsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });
 
-export const cancelBookingSchema = z.object({
-  reason: z.string().min(10).max(500).optional(),
-});
-
 // ========== TYPES ==========
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 export type UpdateBookingStatusInput = z.infer<
@@ -290,4 +324,7 @@ export type UpdatePaymentStatusInput = z.infer<
   typeof updatePaymentStatusSchema
 >;
 export type GetBookingsQueryInput = z.infer<typeof getBookingsQuerySchema>;
-export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
+
+export type UpdateBookingTravelersInput = z.infer<
+  typeof updateBookingTravelersSchema
+>;

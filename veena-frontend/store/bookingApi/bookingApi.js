@@ -67,12 +67,26 @@ export const bookingApi = createApi({
       ],
     }),
 
+    // Update booking travelers
+    updateBookingTravelers: builder.mutation({
+      query: ({ bookingId, travelers }) => ({
+        url: `/${bookingId}/travelers`,
+        method: "PATCH",
+        body: { travelers },
+      }),
+      invalidatesTags: (result, error, { bookingId }) => [
+        { type: "Booking", id: bookingId },
+        { type: "Booking", id: `${bookingId}-summary` },
+        "BookingList",
+      ],
+    }),
+
     // Cancel booking
     cancelBooking: builder.mutation({
-      query: ({ bookingId, reason }) => ({
+      query: ({ bookingId, reason, cancellationComments }) => ({
         url: `/${bookingId}/cancel`,
         method: "PATCH",
-        body: { reason },
+        body: { reason, cancellationComments },
       }),
       invalidatesTags: (result, error, { bookingId }) => [
         { type: "Booking", id: bookingId },
@@ -88,5 +102,6 @@ export const {
   useGetBookingByIdQuery,
   useGetBookingSummaryQuery,
   useAddPaymentMutation,
+  useUpdateBookingTravelersMutation,
   useCancelBookingMutation,
 } = bookingApi;

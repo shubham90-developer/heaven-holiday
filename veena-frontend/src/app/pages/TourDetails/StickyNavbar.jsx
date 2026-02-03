@@ -40,7 +40,7 @@ const StickyNavbar = () => {
   };
 
   return (
-    <div className="sticky top-0 bg-white shadow z-50 border-b">
+    <div className="sticky top-0 bg-white shadow z-20 border-b">
       <nav className="max-w-6xl mx-auto flex space-x-6 px-4 py-3 text-sm font-medium overflow-x-auto">
         {sections.map((section) => (
           <button
