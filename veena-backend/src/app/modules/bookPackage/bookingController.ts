@@ -12,7 +12,10 @@ import {
   addPaymentSchema,
   updateBookingTravelersSchema,
 } from './bookingValidation';
-
+import {
+  createRazorpayOrder,
+  verifyRazorpaySignature,
+} from '../../config/razorpay';
 // Generate unique booking ID
 const generateBookingId = async (): Promise<string> => {
   const date = new Date();
@@ -900,6 +903,221 @@ export const getAllBookings = async (
           limit: Number(limit),
           totalPages: Math.ceil(total / Number(limit)),
         },
+      },
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create Razorpay Payment Order
+export const createPaymentOrder = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+    const { bookingId } = req.params;
+    const { amount } = req.body;
+
+    // Find user
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return next(new appError('User not found', 404));
+    }
+
+    // Find booking
+    const booking = await Booking.findOne({
+      bookingId,
+      user: user._id,
+    });
+
+    if (!booking) {
+      return next(new appError('Booking not found', 404));
+    }
+
+    // Validate booking status
+    if (booking.bookingStatus === 'Cancelled') {
+      return next(
+        new appError('Cannot process payment for cancelled booking', 400),
+      );
+    }
+
+    if (booking.paymentStatus === 'Fully Paid') {
+      return next(new appError('Booking is already fully paid', 400));
+    }
+
+    // Validate amount
+    if (!amount || amount <= 0) {
+      return next(new appError('Invalid payment amount', 400));
+    }
+
+    if (amount > booking.pricing.pendingAmount) {
+      return next(
+        new appError(
+          `Payment amount ₹${amount} exceeds pending amount ₹${booking.pricing.pendingAmount}`,
+          400,
+        ),
+      );
+    }
+
+    // Create Razorpay order
+    const razorpayOrder = await createRazorpayOrder(amount, booking.bookingId);
+
+    // Send response
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Payment order created successfully',
+      data: {
+        orderId: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        bookingId: booking.bookingId,
+        keyId: process.env.RAZORPAY_KEY_ID,
+      },
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Verify Razorpay Payment
+export const verifyPayment = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+    const { bookingId } = req.params;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, amount } =
+      req.body;
+
+    // Find user
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return next(new appError('User not found', 404));
+    }
+
+    // Find booking
+    const booking = await Booking.findOne({
+      bookingId,
+      user: user._id,
+    });
+
+    if (!booking) {
+      return next(new appError('Booking not found', 404));
+    }
+
+    // Verify signature
+    const isValid = verifyRazorpaySignature(
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+    );
+
+    if (!isValid) {
+      return next(
+        new appError('Payment verification failed. Invalid signature.', 400),
+      );
+    }
+
+    // Payment verified! Save it
+    const paymentData = {
+      paymentId: razorpayPaymentId,
+      amount: amount / 100, // Convert paise to rupees
+      paymentMethod: 'UPI' as const, // or get from frontend
+      paymentStatus: 'Success' as const,
+      paymentDate: new Date(),
+      transactionId: razorpayPaymentId,
+      razorpayOrderId: razorpayOrderId,
+      razorpayPaymentId: razorpayPaymentId,
+      razorpaySignature: razorpaySignature,
+      remarks: 'Online payment via Razorpay',
+    };
+
+    // Add payment
+    booking.payments.push(paymentData);
+
+    // Update payment status
+    booking.updatePaymentStatus();
+
+    await booking.save();
+
+    // Get updated booking
+    const updatedBooking = await Booking.findById(booking._id)
+      .populate('user', 'name email phone')
+      .populate('tourPackage', 'title subtitle days nights');
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Payment verified and recorded successfully',
+      data: {
+        booking: updatedBooking,
+        paymentStatus: booking.paymentStatus,
+        bookingStatus: booking.bookingStatus,
+        remainingAmount: booking.pricing.pendingAmount,
+      },
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Handle Payment Failure
+export const handlePaymentFailure = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { firebaseUid } = req.user!;
+    const { bookingId } = req.params;
+    const { razorpayOrderId, error } = req.body;
+
+    // Find user
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return next(new appError('User not found', 404));
+    }
+
+    // Find booking
+    const booking = await Booking.findOne({
+      bookingId,
+      user: user._id,
+    });
+
+    if (!booking) {
+      return next(new appError('Booking not found', 404));
+    }
+
+    // Log failed payment
+    const failedPayment = {
+      paymentId: `FAILED_${Date.now()}`,
+      amount: 0,
+      paymentMethod: 'UPI' as const,
+      paymentStatus: 'Failed' as const,
+      paymentDate: new Date(),
+      razorpayOrderId: razorpayOrderId,
+      remarks: `Payment failed: ${error?.description || 'Unknown error'}`,
+    };
+
+    booking.payments.push(failedPayment);
+    await booking.save();
+
+    res.json({
+      success: false,
+      statusCode: 400,
+      message: 'Payment failed',
+      data: {
+        bookingId: booking.bookingId,
+        error: error?.description || 'Payment was not successful',
       },
     });
     return;

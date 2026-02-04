@@ -54,7 +54,7 @@ export const bookingApi = createApi({
       ],
     }),
 
-    // Add payment to booking
+    // Add payment to booking (existing - for manual payments)
     addPayment: builder.mutation({
       query: ({ bookingId, paymentData }) => ({
         url: `/${bookingId}/payment`,
@@ -67,7 +67,38 @@ export const bookingApi = createApi({
       ],
     }),
 
-    // Update booking travelers
+    createPaymentOrder: builder.mutation({
+      query: ({ bookingId, amount }) => ({
+        url: `/${bookingId}/create-payment-order`,
+        method: "POST",
+        body: { amount },
+      }),
+    }),
+
+    verifyPayment: builder.mutation({
+      query: ({ bookingId, paymentData }) => ({
+        url: `/${bookingId}/verify-payment`,
+        method: "POST",
+        body: paymentData,
+      }),
+      invalidatesTags: (result, error, { bookingId }) => [
+        { type: "Booking", id: bookingId },
+        { type: "Booking", id: `${bookingId}-summary` },
+        "BookingList",
+      ],
+    }),
+
+    handlePaymentFailure: builder.mutation({
+      query: ({ bookingId, failureData }) => ({
+        url: `/${bookingId}/payment-failure`,
+        method: "POST",
+        body: failureData,
+      }),
+      invalidatesTags: (result, error, { bookingId }) => [
+        { type: "Booking", id: bookingId },
+      ],
+    }),
+
     updateBookingTravelers: builder.mutation({
       query: ({ bookingId, travelers }) => ({
         url: `/${bookingId}/travelers`,
@@ -81,7 +112,6 @@ export const bookingApi = createApi({
       ],
     }),
 
-    // Cancel booking
     cancelBooking: builder.mutation({
       query: ({ bookingId, reason, cancellationComments }) => ({
         url: `/${bookingId}/cancel`,
@@ -104,4 +134,7 @@ export const {
   useAddPaymentMutation,
   useUpdateBookingTravelersMutation,
   useCancelBookingMutation,
+  useCreatePaymentOrderMutation,
+  useVerifyPaymentMutation,
+  useHandlePaymentFailureMutation,
 } = bookingApi;

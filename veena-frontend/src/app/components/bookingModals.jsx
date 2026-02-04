@@ -7,25 +7,39 @@ import {
   FaCalendar,
   FaInfoCircle,
 } from "react-icons/fa";
-import { useCreateBookingMutation } from "store/bookingApi/bookingApi";
+import {
+  useCreateBookingMutation,
+  useCreatePaymentOrderMutation,
+  useVerifyPaymentMutation,
+  useHandlePaymentFailureMutation,
+} from "store/bookingApi/bookingApi";
 import DepartureSelector from "../pages/TourDetails/DepartureSelector";
 import toast from "react-hot-toast";
-const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
+
+const BookingStepperModal = ({
+  isOpen,
+  onClose,
+  tourData,
+  preSelectedDeparture = null,
+}) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [createBooking, { isLoading, isSuccess, data: bookingData }] =
     useCreateBookingMutation();
-  const userId = localStorage.getItem("userId");
-  console.log("userId", userId);
+  const [createPaymentOrder, { isLoading: isCreatingOrder }] =
+    useCreatePaymentOrderMutation();
+  const [verifyPayment, { isLoading: isVerifying }] =
+    useVerifyPaymentMutation();
+  const [handlePaymentFailure] = useHandlePaymentFailureMutation();
 
-  // NEW STATE: Track which traveler forms are open
+  const userId = localStorage.getItem("userId");
+
   const [openTravelerForms, setOpenTravelerForms] = useState([]);
+  const [paymentType, setPaymentType] = useState("advance");
 
   const [formData, setFormData] = useState({
-    // Step 1: Departure & City
     selectedDeparture: null,
     packageType: "Joining Package",
 
-    // Step 2: Traveler Count
     travelerCount: {
       adults: 1,
       children: 0,
@@ -33,10 +47,8 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
       total: 1,
     },
 
-    // Step 3: Traveler Details
     travelers: [],
 
-    // Pricing
     pricing: {
       totalAmount: 0,
       advanceAmount: 0,
@@ -78,10 +90,9 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     formData.selectedDeparture,
     formData.travelerCount,
     formData.packageType,
-    tourData, // ✅ STEP 2C: Add tourData to dependencies
+    tourData,
   ]);
 
-  // Initialize travelers array when count changes
   useEffect(() => {
     const { adults, children, infants } = formData.travelerCount;
     const travelers = [];
@@ -128,29 +139,28 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     }
 
     setFormData((prev) => ({ ...prev, travelers }));
-    // Reset open forms when traveler count changes
     setOpenTravelerForms([]);
   }, [formData.travelerCount]);
-  // Add this after your other useEffects
+
   useEffect(() => {
     if (isOpen) {
       resetForm();
     }
   }, [isOpen]);
+
   useEffect(() => {
     if (isSuccess && bookingData) {
-      resetForm();
-      onClose();
+      setCurrentStep(5);
     }
   }, [isSuccess, bookingData]);
-  // Auto-open first traveler form when reaching step 3
+
   useEffect(() => {
     if (
       currentStep === 3 &&
       openTravelerForms.length === 0 &&
       formData.travelers.length > 0
     ) {
-      setOpenTravelerForms([0]); // Open first traveler form automatically
+      setOpenTravelerForms([0]);
     }
   }, [currentStep, formData.travelers.length]);
 
@@ -163,6 +173,21 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
       year: "numeric",
     });
   };
+  useEffect(() => {
+    if (isOpen && preSelectedDeparture) {
+      console.log("Pre-filling departure:", preSelectedDeparture);
+
+      setFormData((prev) => ({
+        ...prev,
+        selectedDeparture: {
+          departureId: preSelectedDeparture._id,
+          departureCity: preSelectedDeparture.city,
+          departureDate: preSelectedDeparture.date,
+          packageType: prev.packageType,
+        },
+      }));
+    }
+  }, [isOpen, preSelectedDeparture]);
 
   const calculateEndDate = (startDate, days) => {
     if (!startDate || !days) return "";
@@ -192,7 +217,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
       const newCount = { ...prev.travelerCount };
 
       if (type === "adults") {
-        newCount.adults = Math.max(1, newValue); // At least 1 adult
+        newCount.adults = Math.max(1, newValue);
       } else {
         newCount[type] = newValue;
       }
@@ -228,7 +253,6 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     });
   };
 
-  // NEW FUNCTION: Toggle traveler form open/close
   const toggleTravelerForm = (index) => {
     if (openTravelerForms.includes(index)) {
       setOpenTravelerForms(openTravelerForms.filter((i) => i !== index));
@@ -237,12 +261,10 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     }
   };
 
-  // NEW FUNCTION: Close specific traveler form
   const closeTravelerForm = (index) => {
     setOpenTravelerForms(openTravelerForms.filter((i) => i !== index));
   };
 
-  // NEW FUNCTION: Check if traveler form is filled
   const isTravelerFormFilled = (traveler) => {
     const basicFieldsFilled =
       traveler.firstName &&
@@ -293,16 +315,19 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     formData.travelers.forEach((traveler, index) => {
       if (!traveler.title) newErrors[`traveler_${index}_title`] = "Required";
       if (!traveler.firstName)
-        newErrors[`traveler_${index}_firstName`] = "Required";
+        newErrors[`traveler_${index}_firstName`] = "First Name Required";
       if (!traveler.lastName)
-        newErrors[`traveler_${index}_lastName`] = "Required";
+        newErrors[`traveler_${index}_lastName`] = "Last Name Required";
       if (!traveler.dateOfBirth)
-        newErrors[`traveler_${index}_dob`] = "Required";
-      if (!traveler.gender) newErrors[`traveler_${index}_gender`] = "Required";
+        newErrors[`traveler_${index}_dob`] = "DOB Required";
+      if (!traveler.gender)
+        newErrors[`traveler_${index}_gender`] = "Gender Required";
 
       if (traveler.isLeadTraveler) {
-        if (!traveler.email) newErrors[`traveler_${index}_email`] = "Required";
-        if (!traveler.phone) newErrors[`traveler_${index}_phone`] = "Required";
+        if (!traveler.email)
+          newErrors[`traveler_${index}_email`] = "Email Required";
+        if (!traveler.phone)
+          newErrors[`traveler_${index}_phone`] = "Phone Required";
       }
     });
     setErrors(newErrors);
@@ -316,11 +341,16 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     if (currentStep === 2) isValid = validateStep2();
     if (currentStep === 3) isValid = validateStep3();
 
-    if (isValid && currentStep < 3) {
-      setCurrentStep(currentStep + 1);
+    if (isValid) {
+      if (currentStep === 3) {
+        // Go to review step
+        setCurrentStep(4);
+      } else if (currentStep < 5) {
+        setCurrentStep(currentStep + 1);
+      }
     }
   };
-  // Add this near your other functions (after handleBack)
+
   const resetForm = () => {
     setCurrentStep(1);
     setFormData({
@@ -343,7 +373,9 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     });
     setOpenTravelerForms([]);
     setErrors({});
+    setPaymentType("advance");
   };
+
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -351,28 +383,26 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleConfirmAndPay = async () => {
     const token = localStorage.getItem("authToken");
     if (!token) {
-      toast.alert("Please login first!");
+      toast.error("Please login first!");
       return;
     }
 
     const userId = localStorage.getItem("userId");
     if (!userId) {
-      toast.alert("User not logged in. Please login again.");
+      toast.error("User not logged in. Please login again.");
       return;
     }
 
     try {
-      // Find the lead traveler
       const leadTraveler = formData.travelers.find((t) => t.isLeadTraveler);
       if (!leadTraveler) {
-        toast.alert("Please select a lead traveler");
+        toast.error("Please select a lead traveler");
         return;
       }
 
-      // Build payload
       const bookingPayload = {
         user: userId,
         tourPackage: tourData._id,
@@ -403,25 +433,121 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
         },
       };
 
-      // Call backend API
-      const result = await createBooking(bookingPayload).unwrap();
-
+      await createBooking(bookingPayload).unwrap();
       toast.success("Booking created successfully!");
-      onClose();
+      // Step changes to 5 via useEffect
     } catch (error) {
-      toast.success(
+      toast.error(
         `Booking failed: ${error?.data?.message || "Please try again"}`,
       );
     }
   };
 
-  // Handle successful booking
-  useEffect(() => {
-    if (isSuccess && bookingData) {
-      // Here you can redirect to payment page or open payment modal
-      onClose();
+  // Razorpay Payment Handler
+  const handleRazorpayPayment = async () => {
+    if (!bookingData?.data?.booking?.bookingId) {
+      toast.error("Booking ID not found");
+      return;
     }
-  }, [isSuccess, bookingData]);
+
+    const bookingId = bookingData.data.booking.bookingId;
+    const amount =
+      paymentType === "advance"
+        ? formData.pricing.advanceAmount
+        : formData.pricing.totalAmount;
+
+    try {
+      // Step 1: Create Razorpay order
+      const orderResponse = await createPaymentOrder({
+        bookingId,
+        amount,
+      }).unwrap();
+
+      if (!orderResponse.success) {
+        toast.error("Failed to create payment order");
+        return;
+      }
+
+      const { orderId, amount: orderAmount, keyId } = orderResponse.data;
+
+      // Step 2: Open Razorpay checkout
+      const options = {
+        key: keyId,
+        amount: orderAmount,
+        currency: "INR",
+        name: "Heaven Holiday",
+        description: `Payment for Booking ${bookingId}`,
+        order_id: orderId,
+
+        handler: async function (response) {
+          try {
+            // Step 3: Verify payment
+            const verifyResponse = await verifyPayment({
+              bookingId,
+              paymentData: {
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                amount: orderAmount,
+              },
+            }).unwrap();
+
+            if (verifyResponse.success) {
+              toast.success("Payment successful!");
+              resetForm();
+              onClose();
+              // Optionally redirect to booking success page
+            } else {
+              toast.error("Payment verification failed");
+            }
+          } catch (error) {
+            toast.error("Payment verification failed");
+          }
+        },
+
+        prefill: {
+          name: bookingData.data.booking.leadTraveler?.name || "",
+          email: bookingData.data.booking.leadTraveler?.email || "",
+          contact: bookingData.data.booking.leadTraveler?.phone || "",
+        },
+
+        theme: {
+          color: "#dc2626", // red-600
+        },
+
+        modal: {
+          ondismiss: function () {
+            toast.info("Payment cancelled");
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+
+      razorpay.on("payment.failed", async function (response) {
+        try {
+          await handlePaymentFailure({
+            bookingId,
+            failureData: {
+              razorpayOrderId: response.error.metadata.order_id,
+              error: {
+                description: response.error.description,
+              },
+            },
+          }).unwrap();
+        } catch (error) {
+          console.error("Failed to log payment failure:", error);
+        }
+
+        toast.error(`Payment Failed: ${response.error.description}`);
+      });
+
+      razorpay.open();
+    } catch (error) {
+      toast.error("Error processing payment");
+      console.error("Payment error:", error);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -429,6 +555,8 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
     { id: 1, name: "Departure & City" },
     { id: 2, name: "Traveler Count" },
     { id: 3, name: "Traveler Details" },
+    { id: 4, name: "Review & Confirm" },
+    { id: 5, name: "Payment" },
   ];
 
   return (
@@ -449,7 +577,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
 
         {/* Stepper */}
         <div className="border-b p-4 flex-shrink-0">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <div className="flex items-center justify-between max-w-3xl mx-auto">
             {steps.map((step, index) => (
               <React.Fragment key={step.id}>
                 <div className="flex flex-col items-center">
@@ -543,10 +671,11 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                     </div>
                   </div>
 
-                  {/* Departure Selector */}
+                  {/* Departure Selector Component */}
                   <DepartureSelector
                     departures={tourData?.departures}
                     onDateSelect={handleDepartureSelect}
+                    packageType={formData.packageType}
                   />
 
                   {errors.departure && (
@@ -684,7 +813,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                 </div>
               )}
 
-              {/* Step 3: Traveler Details - UPDATED SECTION */}
+              {/* Step 3: Traveler Details */}
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold mb-4">
@@ -700,7 +829,6 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                         key={index}
                         className="border rounded-lg p-4 space-y-4"
                       >
-                        {/* BUTTON TO OPEN/SHOW FORM */}
                         {!isFormOpen && (
                           <button
                             onClick={() => toggleTravelerForm(index)}
@@ -756,10 +884,8 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                           </button>
                         )}
 
-                        {/* THE ACTUAL FORM (only shows when button is clicked) */}
                         {isFormOpen && (
                           <div className="space-y-4">
-                            {/* Title with Close Button */}
                             <div className="flex items-center justify-between mb-4 pb-3 border-b">
                               <div className="flex items-center gap-2">
                                 <FaUser className="text-red-600" />
@@ -781,7 +907,6 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                               </button>
                             </div>
 
-                            {/* All the form fields */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Title */}
                               <div>
@@ -931,64 +1056,61 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                                 )}
                               </div>
 
-                              {/* Email (Lead Traveler Only) */}
                               {traveler.isLeadTraveler && (
-                                <div>
-                                  <label className="block text-sm font-medium mb-1">
-                                    Email{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <input
-                                    type="email"
-                                    value={traveler.email || ""}
-                                    onChange={(e) =>
-                                      handleTravelerChange(
-                                        index,
-                                        "email",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="email@example.com"
-                                  />
-                                  {errors[`traveler_${index}_email`] && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                      {errors[`traveler_${index}_email`]}
-                                    </p>
-                                  )}
-                                </div>
-                              )}
+                                <>
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1">
+                                      Email{" "}
+                                      <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                      type="email"
+                                      value={traveler.email || ""}
+                                      onChange={(e) =>
+                                        handleTravelerChange(
+                                          index,
+                                          "email",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      placeholder="email@example.com"
+                                    />
+                                    {errors[`traveler_${index}_email`] && (
+                                      <p className="text-red-600 text-xs mt-1">
+                                        {errors[`traveler_${index}_email`]}
+                                      </p>
+                                    )}
+                                  </div>
 
-                              {/* Phone (Lead Traveler Only) */}
-                              {traveler.isLeadTraveler && (
-                                <div>
-                                  <label className="block text-sm font-medium mb-1">
-                                    Phone{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <input
-                                    type="tel"
-                                    value={traveler.phone || ""}
-                                    onChange={(e) =>
-                                      handleTravelerChange(
-                                        index,
-                                        "phone",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="+91 9876543210"
-                                  />
-                                  {errors[`traveler_${index}_phone`] && (
-                                    <p className="text-red-600 text-xs mt-1">
-                                      {errors[`traveler_${index}_phone`]}
-                                    </p>
-                                  )}
-                                </div>
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1">
+                                      Phone{" "}
+                                      <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                      type="tel"
+                                      value={traveler.phone || ""}
+                                      onChange={(e) =>
+                                        handleTravelerChange(
+                                          index,
+                                          "phone",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      placeholder="+91 9876543210"
+                                    />
+                                    {errors[`traveler_${index}_phone`] && (
+                                      <p className="text-red-600 text-xs mt-1">
+                                        {errors[`traveler_${index}_phone`]}
+                                      </p>
+                                    )}
+                                  </div>
+                                </>
                               )}
                             </div>
 
-                            {/* Save Button */}
                             <div className="flex justify-end gap-3 pt-4 border-t">
                               <button
                                 onClick={() => closeTravelerForm(index)}
@@ -998,7 +1120,6 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                               </button>
                               <button
                                 onClick={() => {
-                                  // Validate this traveler's form before closing
                                   if (isTravelerFormFilled(traveler)) {
                                     closeTravelerForm(index);
                                   } else {
@@ -1007,7 +1128,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                                     );
                                   }
                                 }}
-                                className="w-50 py-2 bg-red-700 rounded-lg font-medium hover:bg-red-500 text-white transition cursor-pointer"
+                                className="w-50 py-2 bg-red-700 rounded-lg font-medium hover:bg-red-500 text-white transition cursor-pointer px-6"
                               >
                                 Save Details
                               </button>
@@ -1017,6 +1138,287 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Step 4: Review & Confirm */}
+              {currentStep === 4 && (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Review Your Booking
+                  </h3>
+
+                  {/* Tour Details */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-3">
+                      Tour Details
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tour Name:</span>
+                        <span className="font-medium">{tourData?.title}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Duration:</span>
+                        <span className="font-medium">
+                          {tourData?.days}D/{tourData?.nights}N
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Package Type:</span>
+                        <span className="font-medium">
+                          {formData.packageType}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Departure City:</span>
+                        <span className="font-medium">
+                          {formData.selectedDeparture?.departureCity}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Departure Date:</span>
+                        <span className="font-medium">
+                          {formatDate(
+                            formData.selectedDeparture?.departureDate,
+                          )}{" "}
+                          →{" "}
+                          {calculateEndDate(
+                            formData.selectedDeparture?.departureDate,
+                            tourData?.days,
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCurrentStep(1)}
+                      className="mt-3 text-sm text-blue-600 hover:underline"
+                    >
+                      Edit Departure Details
+                    </button>
+                  </div>
+
+                  {/* Travelers Details */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-3">
+                      Travelers ({formData.travelerCount.total})
+                    </h4>
+                    <div className="space-y-3">
+                      {formData.travelers.map((traveler, index) => (
+                        <div
+                          key={index}
+                          className="bg-white p-3 rounded border"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">
+                                {index + 1}. {traveler.title}{" "}
+                                {traveler.firstName} {traveler.lastName}
+                                {traveler.isLeadTraveler && (
+                                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                    Lead
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {traveler.type} • {traveler.gender} • Age{" "}
+                                {traveler.age}
+                              </p>
+                              {traveler.isLeadTraveler && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {traveler.email} • {traveler.phone}
+                                </p>
+                              )}
+                            </div>
+                            <FaCheckCircle className="text-green-500" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setCurrentStep(3)}
+                      className="mt-3 text-sm text-blue-600 hover:underline"
+                    >
+                      Edit Traveler Details
+                    </button>
+                  </div>
+
+                  {/* Price Breakdown */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-3">
+                      Price Breakdown
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Price per person:</span>
+                        <span className="font-medium">
+                          ₹
+                          {formData.pricing.pricePerPerson.toLocaleString(
+                            "en-IN",
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total travelers:</span>
+                        <span className="font-medium">
+                          {formData.travelerCount.total}
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-base border-t pt-2">
+                        <span>Total Amount:</span>
+                        <span className="text-green-600">
+                          ₹
+                          {formData.pricing.totalAmount.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-orange-600">
+                        <span>Advance Amount (25%):</span>
+                        <span className="font-semibold">
+                          ₹
+                          {formData.pricing.advanceAmount.toLocaleString(
+                            "en-IN",
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>Balance Amount:</span>
+                        <span className="font-medium">
+                          ₹
+                          {(
+                            formData.pricing.totalAmount -
+                            formData.pricing.advanceAmount
+                          ).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Confirmation Note */}
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <FaInfoCircle className="inline mr-2" />
+                      By clicking "Confirm & Proceed to Payment", you agree to
+                      our terms and conditions. Your booking will be confirmed
+                      after successful payment.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: Payment */}
+              {currentStep === 5 && bookingData && (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                      <FaCheckCircle className="text-green-600 text-3xl" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                      Booking Confirmed!
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Your booking ID:{" "}
+                      <span className="font-semibold text-blue-600">
+                        {bookingData.data.booking.bookingId}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Payment Options */}
+                  <div className="bg-gray-50 p-6 rounded-lg">
+                    <h4 className="font-semibold text-gray-800 mb-4">
+                      Complete Your Payment
+                    </h4>
+
+                    {/* Payment Type Selection */}
+                    <div className="space-y-3 mb-6">
+                      <label className="flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer hover:bg-white transition">
+                        <div>
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            value="advance"
+                            checked={paymentType === "advance"}
+                            onChange={(e) => setPaymentType(e.target.value)}
+                            className="mr-3"
+                          />
+                          <span className="font-medium">Pay Advance (25%)</span>
+                          <p className="text-sm text-gray-600 ml-6">
+                            Pay ₹
+                            {formData.pricing.advanceAmount.toLocaleString(
+                              "en-IN",
+                            )}{" "}
+                            now, rest before departure
+                          </p>
+                        </div>
+                        <span className="font-bold text-orange-600">
+                          ₹
+                          {formData.pricing.advanceAmount.toLocaleString(
+                            "en-IN",
+                          )}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer hover:bg-white transition">
+                        <div>
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            value="full"
+                            checked={paymentType === "full"}
+                            onChange={(e) => setPaymentType(e.target.value)}
+                            className="mr-3"
+                          />
+                          <span className="font-medium">Pay Full Amount</span>
+                          <p className="text-sm text-gray-600 ml-6">
+                            Complete payment now
+                          </p>
+                        </div>
+                        <span className="font-bold text-green-600">
+                          ₹
+                          {formData.pricing.totalAmount.toLocaleString("en-IN")}
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Payment Button */}
+                    <button
+                      onClick={handleRazorpayPayment}
+                      disabled={isCreatingOrder || isVerifying}
+                      className="w-full py-4 bg-green-600 text-white rounded-lg font-semibold text-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+                    >
+                      {isCreatingOrder || isVerifying
+                        ? "Processing..."
+                        : `Pay ₹${
+                            paymentType === "advance"
+                              ? formData.pricing.advanceAmount.toLocaleString(
+                                  "en-IN",
+                                )
+                              : formData.pricing.totalAmount.toLocaleString(
+                                  "en-IN",
+                                )
+                          }`}
+                    </button>
+
+                    <p className="text-xs text-gray-500 text-center mt-3">
+                      Secure payment powered by Razorpay
+                    </p>
+                  </div>
+
+                  {/* Skip Payment Option */}
+                  <div className="text-center">
+                    <button
+                      onClick={() => {
+                        toast.success(
+                          "Booking saved! You can complete payment later.",
+                        );
+                        resetForm();
+                        onClose();
+                      }}
+                      className="text-sm text-gray-600 hover:text-gray-800 underline"
+                    >
+                      Skip for now, I'll pay later
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1029,7 +1431,6 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                   BOOKING SUMMARY
                 </h2>
 
-                {/* Tour Title */}
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-gray-800">
                     {tourData?.title}
@@ -1037,37 +1438,33 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                   <p className="text-xs text-gray-600">{tourData?.subtitle}</p>
                 </div>
 
-                {/* Departure City */}
                 {formData.selectedDeparture && (
-                  <div className="mb-2 flex justify-between text-sm text-gray-700">
-                    <span>Dept. city</span>
-                    <span className="font-medium">
-                      {formData.selectedDeparture.departureCity}
-                    </span>
-                  </div>
+                  <>
+                    <div className="mb-2 flex justify-between text-sm text-gray-700">
+                      <span>Dept. city</span>
+                      <span className="font-medium">
+                        {formData.selectedDeparture.departureCity}
+                      </span>
+                    </div>
+
+                    <div className="mb-2 flex justify-between text-sm text-gray-700">
+                      <span>Dept. date</span>
+                      <span className="font-semibold text-black">
+                        {formatDate(formData.selectedDeparture.departureDate)} →{" "}
+                        {calculateEndDate(
+                          formData.selectedDeparture.departureDate,
+                          tourData?.days,
+                        )}
+                      </span>
+                    </div>
+                  </>
                 )}
 
-                {/* Departure Date */}
-                {formData.selectedDeparture && (
-                  <div className="mb-2 flex justify-between text-sm text-gray-700">
-                    <span>Dept. date</span>
-                    <span className="font-semibold text-black">
-                      {formatDate(formData.selectedDeparture.departureDate)} →{" "}
-                      {calculateEndDate(
-                        formData.selectedDeparture.departureDate,
-                        tourData?.days,
-                      )}
-                    </span>
-                  </div>
-                )}
-
-                {/* Package Type */}
                 <div className="mb-2 flex justify-between text-sm text-gray-700">
                   <span>Package Type</span>
                   <span className="font-medium">{formData.packageType}</span>
                 </div>
 
-                {/* Travelers */}
                 <div className="mb-2 flex justify-between text-sm text-gray-700">
                   <span>Travelers</span>
                   <span>
@@ -1077,7 +1474,6 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                   </span>
                 </div>
 
-                {/* Price Section */}
                 <div className="border-t border-dashed pt-4 mb-4">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-sm font-medium text-black">
@@ -1116,8 +1512,7 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                   </div>
                 </div>
 
-                {/* Traveler List (Step 3 only) */}
-                {currentStep === 3 && formData.travelers.length > 0 && (
+                {currentStep >= 3 && formData.travelers.length > 0 && (
                   <div className="border-t pt-4">
                     <h4 className="text-sm font-semibold mb-2">Travelers:</h4>
                     <div className="space-y-1">
@@ -1149,6 +1544,18 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
                     </div>
                   </div>
                 )}
+
+                {/* Show booking ID in payment step */}
+                {currentStep === 5 && bookingData && (
+                  <div className="border-t pt-4 mt-4">
+                    <div className="bg-green-50 p-3 rounded">
+                      <p className="text-xs text-gray-600">Booking ID</p>
+                      <p className="font-semibold text-green-700">
+                        {bookingData.data.booking.bookingId}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1158,9 +1565,9 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
         <div className="border-t p-4 flex justify-between items-center flex-shrink-0 bg-gray-50">
           <button
             onClick={handleBack}
-            disabled={currentStep === 1}
+            disabled={currentStep === 1 || currentStep === 5}
             className={`px-6 py-2 rounded-lg font-medium ${
-              currentStep === 1
+              currentStep === 1 || currentStep === 5
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-gray-600 text-white hover:bg-gray-700"
             }`}
@@ -1168,20 +1575,36 @@ const BookingStepperModal = ({ isOpen, onClose, tourData }) => {
             Back
           </button>
 
-          {currentStep < 3 ? (
+          {currentStep < 4 && (
             <button
               onClick={handleNext}
-              className="py-2 w-50 bg-red-700 rounded-lg font-medium hover:bg-red-500 text-white transition cursor-pointer"
+              className="py-2 w-50 bg-red-700 rounded-lg font-medium hover:bg-red-500 text-white transition cursor-pointer px-6"
             >
               Next
             </button>
-          ) : (
+          )}
+
+          {currentStep === 4 && (
             <button
-              onClick={handleSubmit}
+              onClick={handleConfirmAndPay}
               disabled={isLoading}
               className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-400"
             >
-              {isLoading ? "Creating Booking..." : "Proceed to Payment"}
+              {isLoading
+                ? "Creating Booking..."
+                : "Confirm & Proceed to Payment"}
+            </button>
+          )}
+
+          {currentStep === 5 && (
+            <button
+              onClick={() => {
+                resetForm();
+                onClose();
+              }}
+              className="px-6 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700"
+            >
+              Close
             </button>
           )}
         </div>

@@ -373,10 +373,8 @@ export const createTourPackageCard = async (
       });
     }
 
-    // Parse itinerary
     const itinerary = req.body.itinerary ? parseJSON(req.body.itinerary) : [];
 
-    // ✅ Parse flights, accommodations, and reporting/dropping
     const flights = req.body.flights ? parseJSON(req.body.flights) : [];
     const accommodations = req.body.accommodations
       ? parseJSON(req.body.accommodations)
@@ -385,7 +383,6 @@ export const createTourPackageCard = async (
       ? parseJSON(req.body.reportingDropping)
       : [];
 
-    // Prepare package card data
     const packageCardData = {
       title: req.body.title,
       subtitle: req.body.subtitle,
@@ -695,20 +692,10 @@ export const updateTourPackageCard = async (
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       const files = req.files as Express.Multer.File[];
 
-      // Delete old gallery images
-      for (const oldGalleryImage of tourPackageCard.galleryImages || []) {
-        const oldGalleryPublicId = oldGalleryImage
-          .split('/')
-          .pop()
-          ?.split('.')[0];
-        if (oldGalleryPublicId) {
-          await cloudinary.uploader.destroy(
-            `tour-package-cards/${oldGalleryPublicId}`,
-          );
-        }
-      }
-
-      updateData.galleryImages = files.map((file) => file.path);
+      updateData.galleryImages = [
+        ...tourPackageCard.galleryImages,
+        ...files.map((file) => file.path),
+      ];
     }
 
     // Validate and update

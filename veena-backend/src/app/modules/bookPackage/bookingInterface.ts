@@ -59,6 +59,9 @@ export interface IPayment {
   paymentDate: Date;
   transactionId?: string;
   remarks?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
 }
 
 // ========== MAIN BOOKING INTERFACE ==========

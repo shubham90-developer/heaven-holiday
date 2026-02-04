@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Heart, Download, Mail, Share2, X, Copy } from "lucide-react";
 import Link from "next/link";
 import { FaFacebook, FaWhatsapp } from "react-icons/fa";
-
+import { useAddToWishlistMutation } from "store/authApi/authApi";
 const TourActions = () => {
   const [activeModal, setActiveModal] = useState(null);
 
@@ -20,12 +20,7 @@ const TourActions = () => {
         >
           <Heart className="w-4 h-4" /> Wishlist
         </Link>
-        <button
-          onClick={() => setActiveModal("download")}
-          className="flex items-center gap-1 cursor-pointer"
-        >
-          <Download className="w-4 h-4" /> Download
-        </button>
+
         <button
           onClick={() => setActiveModal("email")}
           className="flex items-center gap-1 cursor-pointer"

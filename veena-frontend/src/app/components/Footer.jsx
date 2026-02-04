@@ -16,7 +16,7 @@ const Footer = () => {
     destinations: "",
   });
 
-  const [createEnquiry, { isLoading, isSuccess, isError, error }] =
+  const [createEnquiry, { isLoading, isSuccess, isError }] =
     useCreateEnquiryMutation();
 
   const handleChange = (e) => {

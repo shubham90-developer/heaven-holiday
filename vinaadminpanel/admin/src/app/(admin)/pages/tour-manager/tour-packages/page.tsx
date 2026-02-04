@@ -560,8 +560,17 @@ const TourPackagePage = () => {
   };
 
   const handleRemoveGalleryImage = (index: number) => {
-    setTourGalleryFiles((prev) => prev.filter((_, i) => i !== index));
     setTourGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
+
+    const preview = tourGalleryPreviews[index];
+    if (preview && preview.startsWith("blob:")) {
+      const fileIndex = tourGalleryFiles.findIndex(
+        (_, i) => URL.createObjectURL(tourGalleryFiles[i]) === preview,
+      );
+      if (fileIndex !== -1) {
+        setTourGalleryFiles((prev) => prev.filter((_, i) => i !== fileIndex));
+      }
+    }
   };
 
   // State helpers
@@ -922,6 +931,11 @@ const TourPackagePage = () => {
       );
       formData.append("tourIncludes", JSON.stringify(tourIncludes));
 
+      if (isEditMode) {
+        formData.append("existingImages", JSON.stringify(tourGalleryPreviews));
+      }
+
+      // Send new files
       tourGalleryFiles.forEach((file) => {
         formData.append("galleryImages", file);
       });

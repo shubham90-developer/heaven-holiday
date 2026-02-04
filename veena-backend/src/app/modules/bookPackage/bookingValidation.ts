@@ -127,29 +127,17 @@ const pricingSchema = z.object({
 
 // ========== PAYMENT ==========
 const paymentSchema = z.object({
-  paymentId: z
-    .string()
-    .min(5, { message: 'Payment ID must be at least 5 characters' }),
-
-  amount: z.coerce
-    .number()
-    .min(1, { message: 'Payment amount must be greater than 0' })
-    .finite({ message: 'Payment amount must be a valid number' }),
-
-  paymentMethod: z.enum(['Cash', 'Card', 'UPI', 'Net Banking', 'Wallet'], {
-    message: 'Invalid payment method',
-  }),
-
+  paymentId: z.string().min(5),
+  amount: z.coerce.number().min(1),
+  paymentMethod: z.enum(['Cash', 'Card', 'UPI', 'Net Banking', 'Wallet']),
   paymentStatus: z.enum(['Pending', 'Success', 'Failed']).default('Pending'),
-
   paymentDate: z.coerce.date().default(() => new Date()),
-
   transactionId: z.string().optional(),
+  remarks: z.string().max(500).optional(),
 
-  remarks: z
-    .string()
-    .max(500, { message: 'Remarks cannot exceed 500 characters' })
-    .optional(),
+  razorpayOrderId: z.string().optional(),
+  razorpayPaymentId: z.string().optional(),
+  razorpaySignature: z.string().optional(),
 });
 
 // ========== CREATE BOOKING ==========

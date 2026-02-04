@@ -278,7 +278,7 @@ export const tourPackageCardSchema = z
 
     category: z.string().min(1, { message: 'Category is required' }),
 
-    galleryImages: z.array(z.string()).optional().default([]),
+    galleryImages: z.array(z.string()).optional(),
 
     badge: z
       .string()

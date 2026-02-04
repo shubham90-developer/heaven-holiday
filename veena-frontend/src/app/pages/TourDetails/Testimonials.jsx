@@ -7,29 +7,22 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import "swiper/css";
 import "swiper/css/navigation";
-
+import { useGetTourReviewQuery } from "store/reviewsApi/reviewsApi";
 const Testimonials = () => {
-  const reviews = [
-    {
-      text: "We had an amazing experience on the tour! The arrangements were well-organized and the managers provided excellent support.",
-      author: "Rajan",
-      date: "Jul 2025",
-    },
-    {
-      text: "Fantastic trip! Everything was smooth, and the tour managers were very professional.",
-      author: "Sneha",
-      date: "Aug 2025",
-    },
-    {
-      text: "It was a memorable journey. Great planning and execution by the team!",
-      author: "Amit",
-      date: "Jun 2025",
-    },
-  ];
-
   // Refs for custom navigation
   const prevRef = useRef(null);
   const nextRef = useRef(null);
+  const { data, isLoading, error } = useGetTourReviewQuery();
+  if (isLoading) {
+    return <p>loading</p>;
+  }
+  if (error) {
+    return <p>error</p>;
+  }
+  const Activereviews =
+    data?.data?.reviews.filter((item) => {
+      return item.status === "active";
+    }) || [];
 
   return (
     <div className="absolute top-4 right-4 bg-white shadow-lg rounded-lg max-w-xs">
@@ -39,7 +32,7 @@ const Testimonials = () => {
             <FaStar className="text-yellow-600" />
             <span className="font-bold">5</span>
           </div>
-          <p>856+ Guests already travelled</p>
+          <p>{Activereviews.length || ""} Guests already travelled</p>
         </div>
 
         {/* Custom Arrows */}
@@ -71,12 +64,21 @@ const Testimonials = () => {
           swiper.navigation.update();
         }}
       >
-        {reviews.map((review, index) => (
+        {Activereviews.map((review, index) => (
           <SwiperSlide key={index}>
             <div className="p-4">
-              <p className="text-sm text-gray-600">{review.text}</p>
+              <p
+                className="text-sm text-gray-600"
+                dangerouslySetInnerHTML={{ __html: review.text }}
+              />
+
               <p className="mt-2 text-xs text-black">
-                - {review.author}, {review.date}
+                — {review.author},{" "}
+                {new Date(review.createdAt).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
               </p>
             </div>
           </SwiperSlide>

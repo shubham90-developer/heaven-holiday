@@ -38,7 +38,9 @@ import RightMap from "./RightMap";
 import TourReview from "@/app/components/TourReview";
 import { useParams } from "next/navigation";
 import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
-
+import BookingStepperModal from "@/app/components/bookingModals";
+import { useState } from "react";
+import { useGetTourReviewQuery } from "store/reviewsApi/reviewsApi";
 const TourDetails = () => {
   const breadcrumbItems = [
     { label: "Home", href: "/" },
@@ -53,13 +55,25 @@ const TourDetails = () => {
     error: tourPackageError,
   } = useGetTourPackageQuery();
 
+  const {
+    data: reviews,
+    isLoading: reviewsLoading,
+    error: reviewsError,
+  } = useGetTourReviewQuery();
+
+  const Activereviews =
+    reviews?.data?.reviews.filter((item) => {
+      return item.status === "active";
+    }) || [];
+  console.log("length", Activereviews.length);
   const packages = tourPackage?.data?.filter((item) => {
     return item._id === packageId;
   });
 
   const tourData = packages?.[0];
 
-  console.log("packages", packages);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [preSelectedDeparture, setPreSelectedDeparture] = useState(null);
 
   const handleScroll = () => {
     const section = document.getElementById("departure-section");
@@ -69,12 +83,12 @@ const TourDetails = () => {
   };
 
   // Loading state
-  if (tourPackageLoading) {
+  if (tourPackageLoading || reviewsLoading) {
     return <div className="text-center py-20">Loading tour details...</div>;
   }
 
   // Error state
-  if (tourPackageError || !tourData) {
+  if (tourPackageError || !tourData || reviewsError) {
     return (
       <div className="text-center py-20 text-red-500">
         Tour not found or error loading details.
@@ -108,7 +122,15 @@ const TourDetails = () => {
   const basePrice =
     tourData.baseJoiningPrice || tourData.baseFullPackagePrice || 0;
   const emiAmount = Math.ceil(basePrice / 12);
+  const handleDepartureSelect = (departure) => {
+    console.log("Departure selected from tour details:", departure);
 
+    // Store the selected departure
+    setPreSelectedDeparture(departure);
+
+    // Open booking modal
+    setIsBookingModalOpen(true);
+  };
   return (
     <>
       <Breadcrumb items={breadcrumbItems} />
@@ -152,13 +174,7 @@ const TourDetails = () => {
                       <FaStar key={i} className="text-sm" />
                     ))}
                   <span className="ml-2 text-xs sm:text-sm text-gray-600">
-                    25 Reviews
-                  </span>
-                  <span
-                    id="tour-reviews"
-                    className="ml-2 text-xs sm:text-sm text-blue-600 font-bold underline cursor-pointer"
-                  >
-                    85 Reviews
+                    {Activereviews.length || ""} Reviews
                   </span>
                 </div>
 
@@ -345,24 +361,7 @@ const TourDetails = () => {
                   ) : (
                     <>
                       <div className="flex flex-col items-center">
-                        <Hotel className="w-5 h-5 mb-1 text-yellow-600" />
-                        Hotel
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <Utensils className="w-5 h-5 mb-1 text-yellow-600" />
-                        Meals
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <PlaneTakeoff className="w-5 h-5 mb-1 text-yellow-600" />
-                        Flight
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <Camera className="w-5 h-5 mb-1 text-yellow-600" />
-                        Sightseeing
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <Bus className="w-5 h-5 mb-1 text-yellow-600" />
-                        Transport
+                        Tour Includes
                       </div>
                     </>
                   )}
@@ -382,7 +381,10 @@ const TourDetails = () => {
         </div>
       </section>
 
-      <DepartureBooking tourData={tourData} />
+      <DepartureBooking
+        tourData={tourData}
+        onDepartureSelect={handleDepartureSelect}
+      />
       <StickyNavbar />
 
       <section className="py-10">
@@ -404,6 +406,15 @@ const TourDetails = () => {
       </section>
 
       <TourReview />
+      <BookingStepperModal
+        isOpen={isBookingModalOpen}
+        onClose={() => {
+          setIsBookingModalOpen(false);
+          setPreSelectedDeparture(null);
+        }}
+        tourData={tourData}
+        preSelectedDeparture={preSelectedDeparture}
+      />
     </>
   );
 };

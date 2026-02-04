@@ -1,4 +1,4 @@
-import { Jura } from "next/font/google"; // ✅ Import Jura font
+import { Jura } from "next/font/google";
 import "./globals.css";
 import TopNavBar from "@/app/components/TopNavBar";
 import MainNavbar from "@/app/components/MainNavbar";
@@ -33,6 +33,7 @@ export default function RootLayout({ children }) {
           <FooterInfo />
           <FooterContactInfo />
           <Footer />
+          <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
         </body>
       </ReduxProvider>
     </html>

@@ -7,9 +7,10 @@ import Link from "next/link";
 import EmiModal from "./EmiModal";
 import BookingStepperModal from "@/app/components/bookingModals";
 
-const DepartureBooking = ({ tourData }) => {
+const DepartureBooking = ({ tourData, onDepartureSelect }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [preSelectedDeparture, setPreSelectedDeparture] = useState(null);
 
   // Get first departure for default values
   const firstDeparture = tourData?.departures?.[0];
@@ -55,6 +56,21 @@ const DepartureBooking = ({ tourData }) => {
   const emiAmount = Math.ceil(basePrice / 12);
   const formattedEmi = `₹${emiAmount.toLocaleString("en-IN")}/month`;
 
+  // ✅ NEW HANDLER: Handle departure selection
+  const handleDepartureSelect = (departure) => {
+    console.log("Departure selected:", departure);
+    setSelectedDate(departure);
+    setPreSelectedDeparture(departure);
+
+    // If onDepartureSelect is provided (from Tour Details page), call it
+    if (onDepartureSelect) {
+      onDepartureSelect(departure);
+    } else {
+      // Otherwise, open modal here (when used in DepartureBooking section)
+      setIsBookingModalOpen(true);
+    }
+  };
+
   return (
     <>
       <section id="departure-section" className="py-10 bg-gray-100">
@@ -74,7 +90,8 @@ const DepartureBooking = ({ tourData }) => {
             {/* Left: Date Selection */}
             <DepartureSelector
               departures={tourData?.departures}
-              onDateSelect={setSelectedDate}
+              onDateSelect={handleDepartureSelect} // ✅ UPDATED: Use new handler
+              packageType="Joining Package" // ✅ ADD packageType
             />
 
             {/* Right: Booking Summary */}
@@ -85,17 +102,21 @@ const DepartureBooking = ({ tourData }) => {
                 BOOKING SUMMARY
               </h2>
 
-              {/* Dept City */}
+              {/* Dept City - ✅ UPDATED: Show selected city if available */}
               <div className="mb-2 flex justify-between text-sm text-gray-700">
                 <span>Dept. city</span>
-                <span className="font-medium">{departureCity}</span>
+                <span className="font-medium">
+                  {selectedDate?.city || departureCity}
+                </span>
               </div>
 
-              {/* Dept Date */}
+              {/* Dept Date - ✅ UPDATED: Show selected date if available */}
               <div className="mb-2 flex justify-between text-sm text-gray-700 break-words">
                 <span>Dept. date</span>
                 <span className="font-semibold text-black">
-                  {departureDate} → {endDate}
+                  {selectedDate?.date
+                    ? `${formatDate(selectedDate.date)} → ${calculateEndDate(selectedDate.date, tourData?.days)}`
+                    : `${departureDate} → ${endDate}`}
                 </span>
               </div>
 
@@ -187,11 +208,14 @@ const DepartureBooking = ({ tourData }) => {
         </div>
       </section>
 
-      {/* Booking Stepper Modal */}
       <BookingStepperModal
         isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
+        onClose={() => {
+          setIsBookingModalOpen(false);
+          setPreSelectedDeparture(null);
+        }}
         tourData={tourData}
+        preSelectedDeparture={preSelectedDeparture}
       />
     </>
   );
