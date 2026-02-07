@@ -7,50 +7,52 @@ import "swiper/css/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useGetTourPackageQuery } from "../../../../store/toursManagement/toursPackagesApi";
-
+import { useGetContactDetailsQuery } from "store/aboutUsApi/contactApi";
 const TourPackagesCards = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { data, isLoading, error } = useGetTourPackageQuery();
+  const {
+    data: contact,
+    isLoading: contactLoading,
+    error: contactError,
+  } = useGetContactDetailsQuery();
 
-  if (isLoading) {
+  if (isLoading || contactLoading) {
     return (
       <section className="py-12 bg-white">
         <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="text-gray-600">Loading team members...</p>
+          <p className="text-gray-600">Loading tour packages...</p>
         </div>
       </section>
     );
   }
 
-  if (error) {
+  if (error || contactError) {
     return (
       <section className="py-12 bg-white">
         <div className="max-w-6xl mx-auto px-4 text-center">
           <p className="text-red-600">
-            Failed to load team members. Please try again later.
+            Failed to load tour packages. Please try again later.
           </p>
         </div>
       </section>
     );
   }
-  const responce = data.data;
 
-  const packages = responce.packages || [];
-  const activePackages = packages.filter((item) => {
-    return item.status == "Active";
-  });
-
+  const packages = data?.data || [];
+  const activePackages = packages.filter((pkg) => pkg.status === "Active");
+  console.log("contact", contact);
   return (
     <section className="py-10 bg-gray-50">
       <div className="max-w-6xl mx-auto px-4">
         {/* Heading */}
         <h5 className="text-md md:text-2xl font-semibold">
-          {responce?.title || ""}
+          Heaven Holiday offers All Inclusive tour packages
         </h5>
-        <p
-          className="text-gray-600 text-sm font-bold"
-          dangerouslySetInnerHTML={{ __html: responce?.subtitle || "" }}
-        ></p>
+        <p className="text-gray-600 text-sm font-bold">
+          No matter where you are in India or around the World, choose from a
+          wide range of tours, conveniently departing from your city.
+        </p>
         <p className="text-gray-600 mb-2 mt-4 italic text-xs">
           Explore tour packages from
         </p>
@@ -72,44 +74,73 @@ const TourPackagesCards = () => {
             }}
             className="pb-10"
           >
-            {activePackages.map((pkg) => (
-              <SwiperSlide key={pkg.id}>
-                <div className="bg-white rounded-lg shadow hover:shadow-md transition overflow-hidden border border-gray-300">
-                  <Link href="/tour-details">
-                    <div className="relative">
-                      <Image
-                        src={pkg.image}
-                        alt={pkg.city}
-                        width={500}
-                        height={500}
-                        className="w-full h-20 object-cover p-2 rounded-2xl"
-                      />
-                      {pkg.badge && (
-                        <span className="absolute bottom-2 left-2 bg-orange-500 text-white text-[10px] px-2 py-1 rounded">
-                          {pkg.badge}
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-4 pt-0">
-                      <p className="text-xs text-gray-600">
-                        Tour Packages From
-                      </p>
-                      <h3 className="font-bold text-blue-900 text-sm">
-                        {pkg.city}
-                      </h3>
-                      <p className="text-xs mt-1 text-gray-700">
-                        <strong className="text-black">{pkg.tours}</strong>{" "}
-                        tours | <strong>{pkg.departures}</strong> departures
-                      </p>
-                      <p className="text-xs mt-1 font-bold text-gray-500">
-                        Starts from{" "}
-                        <span className="text-black">{pkg.price}</span>
-                      </p>
-                    </div>
-                  </Link>
-                </div>
-              </SwiperSlide>
-            ))}
+            {activePackages.map((pkg) => {
+              // Calculate random departure BEFORE return
+              const departures = pkg.departures || [];
+              const randomIndex =
+                departures.length > 0
+                  ? Math.floor(Math.random() * departures.length)
+                  : 0;
+              const randomDeparture = departures[randomIndex];
+
+              return (
+                <SwiperSlide key={pkg._id}>
+                  <div className="bg-white rounded-lg shadow hover:shadow-md transition overflow-hidden border border-gray-300">
+                    <Link href={`/tour-details/${pkg._id}`}>
+                      <div className="relative">
+                        <Image
+                          src={
+                            pkg.galleryImages?.[0] ||
+                            pkg.category?.image ||
+                            "/assets/img/tour-card/1.avif"
+                          }
+                          alt={pkg.title}
+                          width={500}
+                          height={500}
+                          className="w-full h-20 object-cover p-2 rounded-2xl"
+                        />
+                        {pkg.badge && (
+                          <span className="absolute bottom-2 left-2 bg-orange-500 text-white text-[10px] px-2 py-1 rounded">
+                            {pkg.badge}
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-4 pt-0">
+                        <p className="text-xs text-gray-600">
+                          Tour Packages From
+                        </p>
+                        <h3 className="font-bold text-blue-900 text-sm">
+                          {randomDeparture?.city ||
+                            pkg.states?.[0]?.name ||
+                            "Destination"}
+                        </h3>
+                        <p className="text-xs mt-1 text-gray-700">
+                          <strong className="text-black">
+                            {pkg.days} Days
+                          </strong>{" "}
+                          |{" "}
+                          <strong>
+                            {pkg.metadata?.totalDepartures ||
+                              pkg.departures?.length ||
+                              0}
+                          </strong>{" "}
+                          departures
+                        </p>
+                        <p className="text-xs mt-1 font-bold text-gray-500">
+                          Starts from{" "}
+                          <span className="text-black">
+                            ₹
+                            {parseInt(
+                              pkg.baseFullPackagePrice || 0,
+                            ).toLocaleString("en-IN")}
+                          </span>
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+                </SwiperSlide>
+              );
+            })}
           </Swiper>
 
           {/* Custom Nav Buttons */}
@@ -124,7 +155,7 @@ const TourPackagesCards = () => {
         {/* Footer Section with Modal Trigger */}
         <div className="mt-5">
           <p className="text-sm font-semibold text-black">
-            Can’t find tours from your city?
+            Can't find tours from your city?
           </p>
           <p className="text-xs font-semibold text-gray-600">
             Check our Joining & Leaving option. Book your own flights and join
@@ -138,7 +169,7 @@ const TourPackagesCards = () => {
           </p>
         </div>
 
-        {/* Modal (moved outside <p>) */}
+        {/* Modal */}
         {isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative">
@@ -175,18 +206,24 @@ const TourPackagesCards = () => {
               <p className="mt-4 text-sm">
                 Email at{" "}
                 <a
-                  href="mailto:travel@heavenHoliday.com"
+                  href={`mailto:${contact?.data?.writeToUs?.emails[0]}` || ""}
                   className="text-blue-600"
                 >
-                  travel@heavenHoliday.com
+                  {contact?.data?.writeToUs?.emails[0] || ""}
                 </a>{" "}
                 or Call us{" "}
-                <a href="tel:1800227979" className="text-blue-600">
-                  1800 22 7979
+                <a
+                  href={`tel:${contact?.data?.callUs?.phoneNumbers[0]}`}
+                  className="text-blue-600"
+                >
+                  {contact?.data?.callUs?.phoneNumbers[0] || ""}
                 </a>{" "}
                 |{" "}
-                <a href="tel:18003135555" className="text-blue-600">
-                  1800 313 5555
+                <a
+                  href={`tel:${contact?.data?.callUs?.phoneNumbers[1]}`}
+                  className="text-blue-600"
+                >
+                  {contact?.data?.callUs?.phoneNumbers[1] || ""}
                 </a>
               </p>
             </div>

@@ -6,10 +6,21 @@ import DekhoApnaDesh from "@/app/pages/Hero/DekhoApnaDesh";
 import TourReview from "@/app/components/TourReview";
 import HolidayDestinations from "./HolidayDestinations";
 import ContactForm from "./ContactForm";
+import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
 
 const OfficeDetails = () => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const [createEnquiry, { isLoading: isSubmitting }] =
+    useCreateEnquiryMutation();
+
+  const [formData, setFormData] = useState({
+    name: "",
+    mono: "",
+    email: "",
+    destinations: "-",
+  });
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },
@@ -25,6 +36,31 @@ const OfficeDetails = () => {
     { day: "Sat", time: "10:00 AM - 07:00 PM", highlight: true },
     { day: "Sun", time: "Closed" },
   ];
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await createEnquiry({
+        ...formData,
+        message: "Request Call Back",
+      }).unwrap();
+      alert("Call back request submitted successfully!");
+      setFormData({
+        name: "",
+        mono: "",
+        email: "",
+        destinations: "-",
+      });
+    } catch (err) {
+      console.error("Failed to submit request:", err);
+      alert("Failed to submit request. Please try again.");
+    }
+  };
 
   // ✅ Close dropdown when clicking outside
   useEffect(() => {
@@ -61,7 +97,7 @@ const OfficeDetails = () => {
 
               {/* Subtext */}
               <p className="text-gray-600 mt-2">
-                Want to connect? Just click ‘Schedule a Video Meet’ and share
+                Want to connect? Just click 'Schedule a Video Meet' and share
                 your details.
               </p>
 
@@ -113,26 +149,46 @@ const OfficeDetails = () => {
                 Want us to call you?
               </h3>
 
-              <input
-                type="text"
-                placeholder="Full Name*"
-                className="w-full border rounded-xl p-3 text-sm mb-3 border-gray-300 focus:ring focus:ring-yellow-300"
-              />
-              <input
-                type="text"
-                placeholder="Mobile Number*"
-                className="w-full border rounded-xl p-3 text-sm mb-3 border-gray-300 focus:ring focus:ring-yellow-300"
-              />
-              <input
-                type="email"
-                placeholder="Email ID*"
-                className="w-full border rounded-xl p-3 text-sm mb-4 border-gray-300 focus:ring focus:ring-yellow-300"
-              />
+              <form onSubmit={handleSubmit}>
+                <input
+                  type="text"
+                  placeholder="Full Name*"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full border rounded-xl p-3 text-sm mb-3 border-gray-300 focus:ring focus:ring-yellow-300"
+                />
+                <input
+                  type="tel"
+                  placeholder="Mobile Number*"
+                  name="mono"
+                  value={formData.mono}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full border rounded-xl p-3 text-sm mb-3 border-gray-300 focus:ring focus:ring-yellow-300"
+                />
+                <input
+                  type="email"
+                  placeholder="Email ID*"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full border rounded-xl p-3 text-sm mb-4 border-gray-300 focus:ring focus:ring-yellow-300"
+                />
 
-              <button className="w-full cursor-pointer text-white bg-red-700 hover:bg-red-500 py-3 rounded font-medium text-sm flex items-center justify-center gap-2">
-                <Phone size={16} className="text-white" />
-                <span>Request Call Back</span>
-              </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full cursor-pointer text-white bg-red-700 hover:bg-red-500 py-3 rounded font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Phone size={16} className="text-white" />
+                  <span>
+                    {isSubmitting ? "Submitting..." : "Request Call Back"}
+                  </span>
+                </button>
+              </form>
             </div>
           </div>
         </div>

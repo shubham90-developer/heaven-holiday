@@ -83,7 +83,6 @@ const TourPackagePage = () => {
   const tourCards = tourCardsData?.data || [];
   const includesData = includes?.data || [];
 
-  // --- State ---
   const [activeTab, setActiveTab] = useState("categories");
   const [modalType, setModalType] = useState<ModalType>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -121,6 +120,10 @@ const TourPackagePage = () => {
     { name: "", nights: 0 },
   ]);
 
+  const selectedCategory = categories.find(
+    (cat: any) => cat._id === tourCategory,
+  );
+  const selectedCategoryType = selectedCategory?.categoryType || "";
   // NEW: Changed to base prices
   const [tourBaseFullPackagePrice, setTourBaseFullPackagePrice] = useState(0);
   const [tourBaseJoiningPrice, setTourBaseJoiningPrice] = useState(0);
@@ -608,6 +611,10 @@ const TourPackagePage = () => {
     value: string,
   ) => {
     const newStates = [...tourStates];
+    newStates[stateIndex] = {
+      ...newStates[stateIndex],
+      cities: [...newStates[stateIndex].cities],
+    };
     newStates[stateIndex].cities[cityIndex] = value;
     setTourStates(newStates);
   };
@@ -1239,6 +1246,7 @@ const TourPackagePage = () => {
                 handleAddCityDetail={handleAddCityDetail}
                 handleRemoveCityDetail={handleRemoveCityDetail}
                 handleCityDetailChange={handleCityDetailChange}
+                selectedCategoryType={selectedCategoryType}
               />
             </Tab>
 

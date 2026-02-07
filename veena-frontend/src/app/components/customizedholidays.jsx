@@ -3,8 +3,32 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Heart, Car, Plane, Ship, Compass, Gift, Users } from "lucide-react";
+import { useMemo } from "react";
+import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
 
 export default function CustomizedHolidays() {
+  const { data, isLoading, error } = useGetTourPackageQuery();
+
+  // Randomly select 2 tour packages
+  const randomTours = useMemo(() => {
+    if (!data?.data || data.data.length === 0) return [];
+
+    const allTours = [...data.data];
+
+    // If less than 3 packages, show all available
+    if (allTours.length < 3) {
+      return allTours;
+    }
+
+    // If 3 or more, shuffle and show 2
+    for (let i = allTours.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTours[i], allTours[j]] = [allTours[j], allTours[i]];
+    }
+
+    return allTours.slice(0, 2);
+  }, [data]);
+
   return (
     <div className="left-0 top-full w-full lg:w-[650px] bg-white shadow-lg border-t border-gray-200 z-50 overflow-hidden">
       <div className="flex flex-col md:flex-row p-4 md:p-6 gap-6 md:gap-8">
@@ -69,49 +93,51 @@ export default function CustomizedHolidays() {
 
         {/* RIGHT SIDE */}
         <div className="w-full md:w-1/2 grid grid-cols-1 gap-5">
-          {/* Card 1 */}
-          <Link
-            href="/tour-list"
-            className="flex flex-col items-start hover:shadow-md rounded-lg p-2 sm:p-3 transition border border-gray-100 hover:border-gray-200"
-          >
-            <Image
-              src="/customized-1.avif"
-              alt="Luxury Holidays"
-              width={200}
-              height={120}
-              className="rounded-md object-cover w-full h-32 sm:h-36"
-            />
-            <div className="mt-3">
-              <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
-                Luxury Holidays →
-              </h3>
-              <p className="text-gray-600 text-xs sm:text-sm mt-1">
-                Choose the right tailor-made luxury travel vacations
-              </p>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <p className="mt-2 text-gray-600 text-xs">Loading tours...</p>
             </div>
-          </Link>
-
-          {/* Card 2 */}
-          <Link
-            href="/tour-list"
-            className="flex flex-col items-start hover:shadow-md rounded-lg p-2 sm:p-3 transition border border-gray-100 hover:border-gray-200"
-          >
-            <Image
-              src="/customized-2.avif"
-              alt="Island Getaways"
-              width={200}
-              height={120}
-              className="rounded-md object-cover w-full h-32 sm:h-36"
-            />
-            <div className="mt-3">
-              <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
-                Island Getaways →
-              </h3>
-              <p className="text-gray-600 text-xs sm:text-sm mt-1">
-                Explore the tropical island getaways
-              </p>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 text-xs">Failed to load tours</p>
             </div>
-          </Link>
+          ) : randomTours.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-xs">No tours available</p>
+            </div>
+          ) : (
+            randomTours.map((tour) => {
+              const imageUrl =
+                tour.galleryImages?.[0] || "/placeholder-tour.jpg";
+              return (
+                <Link
+                  key={tour._id}
+                  href={`/tour-details/${tour._id}`}
+                  className="flex flex-col items-start hover:shadow-md rounded-lg p-2 sm:p-3 transition border border-gray-100 hover:border-gray-200"
+                >
+                  <Image
+                    src={imageUrl}
+                    alt={tour.title}
+                    width={200}
+                    height={120}
+                    className="rounded-md object-cover w-full h-32 sm:h-36"
+                  />
+                  <div className="mt-3">
+                    <h3 className="font-semibold text-gray-800 text-sm sm:text-base line-clamp-1">
+                      {tour.title} →
+                    </h3>
+                    <p className="text-gray-600 text-xs sm:text-sm mt-1 line-clamp-2">
+                      {tour.subtitle ||
+                        tour.metaDescription
+                          ?.replace(/<[^>]*>/g, "")
+                          .substring(0, 60) + "..."}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

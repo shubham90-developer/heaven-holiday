@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-
+import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
 const city = [
   {
     id: 1,
@@ -25,7 +25,40 @@ const city = [
 const FooterTopBtn = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [createEnquiry, { isLoading: isSubmitting }] =
+    useCreateEnquiryMutation();
 
+  const [formData, setFormData] = useState({
+    name: "",
+    mono: "",
+    email: "",
+    message: "",
+    modeOfCommunication: "call",
+    destinations: "-",
+  });
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await createEnquiry(formData).unwrap();
+      alert("Enquiry submitted successfully!");
+      setFormData({
+        name: "",
+        mono: "",
+        email: "",
+        message: "",
+        modeOfCommunication: "call",
+        destinations: "-",
+      });
+    } catch (err) {
+      console.error("Failed to submit enquiry:", err);
+      alert("Failed to submit enquiry. Please try again.");
+    }
+  };
   return (
     <>
       {/* Footer */}
@@ -75,26 +108,38 @@ const FooterTopBtn = () => {
             </button>
 
             <h2 className="text-xl font-bold mb-5">QUICK ENQUIRY</h2>
-            <form className="space-y-4 text-sm">
+            <form className="space-y-4 text-sm" onSubmit={handleSubmit}>
               <input
                 type="text"
                 placeholder="Full Name*"
                 className="w-full border border-gray-300 p-2 rounded"
+                onChange={handleInputChange}
+                name="name"
+                value={formData.name}
               />
               <input
                 type="tel"
                 placeholder="+91 Mobile Number*"
                 className="w-full border border-gray-300 p-2 rounded"
+                onChange={handleInputChange}
+                name="mono"
+                value={formData.mono}
               />
               <input
                 type="email"
                 placeholder="Email ID*"
                 className="w-full border border-gray-300 p-2 rounded"
+                onChange={handleInputChange}
+                value={formData.email}
+                name="email"
               />
               <textarea
                 placeholder="Drop us a small description"
                 className="w-full border border-gray-300 p-2 rounded"
                 rows="3"
+                onChange={handleInputChange}
+                value={formData.message}
+                name="message"
               />
               <div className="mt-6 border-t border-gray-600 border-dashed pt-4">
                 <p className="text-xs">

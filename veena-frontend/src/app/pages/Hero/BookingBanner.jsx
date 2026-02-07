@@ -22,33 +22,40 @@ const BookingBanner = () => {
 
   console.log("package", data);
 
-  // Filter only active packages and map to slides format
+  // Map API data to slides format
   const slides =
-    data?.data?.packages
+    data?.data
       ?.filter((pkg) => pkg.status === "Active")
       ?.map((pkg) => {
-        // Format the start date
-        const startDate = new Date(pkg.startOn);
-        const formattedDate = startDate.toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-        });
+        // Get first departure date
+        const firstDeparture = pkg.departures?.[0];
+        const startDate = firstDeparture?.date
+          ? new Date(firstDeparture.date)
+          : null;
+        const formattedDate = startDate
+          ? startDate.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+            })
+          : "";
 
-        // Format cities string
-        const citiesString = pkg.cities?.join(" • ") || pkg.city;
+        // Format cities/states string
+        const statesString =
+          pkg.states?.map((state) => state.name).join(" • ") || "";
 
         return {
           id: pkg._id,
-          image: pkg.image,
-          link: pkg.link || "/tour-details",
-          title: data.data.title || "Tour Package",
-          subtitle: pkg.city
-            ? `${pkg.city.charAt(0).toUpperCase() + pkg.city.slice(1)} Special`
-            : "Special Tour",
-          details: citiesString,
-          days: `${pkg.days} Day${pkg.days > 1 ? "s" : ""} | ${formattedDate}`,
-          price: `₹${parseInt(pkg.price).toLocaleString("en-IN")}`,
-          joinPrice: `₹${parseInt(pkg.joinPrice).toLocaleString("en-IN")}`,
+          image:
+            pkg.galleryImages?.[0] ||
+            pkg.category?.image ||
+            "/assets/img/tour-card/1.avif",
+          link: `/tour-details/${pkg._id}`,
+          title: pkg.category?.name || "Tour Package",
+          subtitle: pkg.title || "Special Tour",
+          details: statesString || pkg.route || "",
+          days: `${pkg.days} Day${pkg.days > 1 ? "s" : ""}${formattedDate ? ` | ${formattedDate}` : ""}`,
+          price: `₹${parseInt(pkg.baseFullPackagePrice || 0).toLocaleString("en-IN")}`,
+          joinPrice: `₹${parseInt(pkg.baseJoiningPrice || 0).toLocaleString("en-IN")}`,
           badge: pkg.badge,
         };
       }) || [];

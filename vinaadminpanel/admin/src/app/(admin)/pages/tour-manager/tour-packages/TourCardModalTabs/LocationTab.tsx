@@ -26,6 +26,7 @@ interface LocationTabProps {
     field: string,
     value: string | number,
   ) => void;
+  selectedCategoryType?: string; // ⭐ NEW PROP
 }
 
 const LocationTab = ({
@@ -42,6 +43,7 @@ const LocationTab = ({
   handleAddCityDetail,
   handleRemoveCityDetail,
   handleCityDetailChange,
+  selectedCategoryType, // ⭐ NEW PROP
 }: LocationTabProps) => {
   return (
     <>
@@ -95,6 +97,62 @@ const LocationTab = ({
                 )}
               </Col>
             </Row>
+
+            {/* ⭐ NEW: Conditional Region Dropdown for India */}
+            {selectedCategoryType === "india" && (
+              <Row className="mt-2">
+                <Col md={12}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Region</Form.Label>
+                    <Form.Select
+                      value={state.region || ""}
+                      onChange={(e) =>
+                        handleStateChange(stateIndex, "region", e.target.value)
+                      }
+                    >
+                      <option value="">Select Region</option>
+                      <option value="North India">North India</option>
+                      <option value="South India">South India</option>
+                      <option value="East & North East India">
+                        East & North East India
+                      </option>
+                      <option value="Rajasthan, West & Central India">
+                        Rajasthan, West & Central India
+                      </option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+            )}
+
+            {/* ⭐ NEW: Conditional Continent Dropdown for World */}
+            {selectedCategoryType === "world" && (
+              <Row className="mt-2">
+                <Col md={12}>
+                  <Form.Group className="mb-2">
+                    <Form.Label>Continent</Form.Label>
+                    <Form.Select
+                      value={state.continent || ""}
+                      onChange={(e) =>
+                        handleStateChange(
+                          stateIndex,
+                          "continent",
+                          e.target.value,
+                        )
+                      }
+                    >
+                      <option value="">Select Continent</option>
+                      <option value="Africa">Africa</option>
+                      <option value="Asia">Asia</option>
+                      <option value="Europe">Europe</option>
+                      <option value="North America">North America</option>
+                      <option value="Oceania">Oceania</option>
+                      <option value="South America">South America</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+            )}
 
             <div className="mt-2">
               <Form.Label className="small">Cities</Form.Label>

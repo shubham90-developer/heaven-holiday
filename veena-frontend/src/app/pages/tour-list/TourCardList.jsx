@@ -1,3 +1,4 @@
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -29,7 +30,7 @@ const TourCard = ({ tour, wishlistItems, handleToggleWishlist }) => {
       {/* Left Image */}
       <div className="relative w-full md:w-1/5 flex-shrink-0">
         <Image
-          src={tour.category?.image || "/assets/img/tour-card/1.avif"}
+          src={tour.galleryImages?.[0] || "/assets/img/tour-card/1.avif"}
           alt={tour.title}
           width={600}
           height={600}
@@ -217,21 +218,14 @@ const TourCard = ({ tour, wishlistItems, handleToggleWishlist }) => {
         >
           View Tour Details
         </Link>
-        {/* <div className="mt-4 flex gap-6 text-xs">
-          <Link href="/compare-tours" className="text-black">
-            🔄 Compare
-          </Link>
-          <Link href="#" className="text-black">
-            💬 Enquire Now
-          </Link>
-        </div> */}
       </div>
     </div>
   );
 };
 
 // ✅ Main component: maps tours
-const TourCardList = () => {
+const TourCardList = ({ filteredPackages = [] }) => {
+  // ← ADD THIS PROP
   const router = useRouter();
   const { id: categoryId } = useParams();
   const [currentPage, setCurrentPage] = useState(1);
@@ -275,10 +269,13 @@ const TourCardList = () => {
 
   const categoryName = category?.name;
 
+  // ← REPLACE THIS ENTIRE BLOCK
   const tourPackages =
-    tourpackage?.data?.filter((item) => {
-      return item.category.name === categoryName;
-    }) || [];
+    filteredPackages.length > 0
+      ? filteredPackages
+      : tourpackage?.data?.filter((item) => {
+          return item.category.name === categoryName;
+        }) || [];
 
   console.log("tourPackages", tourPackages);
 
@@ -355,7 +352,11 @@ const TourCardList = () => {
   // No tours found
   if (tourPackages.length === 0) {
     return (
-      <div className="text-center py-8">No tours found for this category.</div>
+      <div className="text-center py-8">
+        {filteredPackages.length === 0 && categoryName
+          ? "No tours found for this category."
+          : "No tours available with the applied filters. Try changing your filters."}
+      </div>
     );
   }
 

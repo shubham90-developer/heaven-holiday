@@ -47,18 +47,34 @@ const StateSchema = new Schema<IState>(
   {
     name: {
       type: String,
-      required: [true, 'State name is required'],
+      required: [true, 'State/Country name is required'],
       trim: true,
     },
     cities: {
       type: [String],
       required: [true, 'Cities are required'],
-      validate: {
-        validator: function (cities: string[]) {
-          return cities.length > 0;
-        },
-        message: 'At least one city is required',
-      },
+    },
+    region: {
+      type: String,
+      enum: [
+        'North India',
+        'South India',
+        'East & North East India',
+        'Rajasthan, West & Central India',
+      ],
+      trim: true,
+    },
+    continent: {
+      type: String,
+      enum: [
+        'Africa',
+        'Asia',
+        'Europe',
+        'North America',
+        'Oceania',
+        'South America',
+      ],
+      trim: true,
     },
   },
   { _id: false },

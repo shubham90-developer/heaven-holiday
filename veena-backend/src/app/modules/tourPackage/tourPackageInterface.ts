@@ -28,6 +28,8 @@ export interface IReportingDropping {
 export interface IState {
   name: string;
   cities: string[];
+  region?: string;
+  continent?: string;
 }
 
 export interface ICityDetails {

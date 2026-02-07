@@ -1,91 +1,87 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo } from "react";
+import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
 
 export default function SpecialityTours() {
+  const { data, isLoading, error } = useGetTourPackageQuery();
+
+  // Randomly select 4 tour packages
+  const randomTours = useMemo(() => {
+    if (!data?.data || data.data.length === 0) return [];
+
+    const allTours = [...data.data];
+
+    // If less than 5 packages, show all
+    if (allTours.length < 5) {
+      return allTours;
+    }
+
+    // If 5 or more, shuffle and show 4
+    for (let i = allTours.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTours[i], allTours[j]] = [allTours[j], allTours[i]];
+    }
+
+    return allTours.slice(0, 4);
+  }, [data]);
+
   return (
-    <div className="left-10 top-full  w-full lg:w-[900] max-h-[500px] bg-white shadow-lg border border-gray-200 py-6 px-6 overflow-y-auto z-50">
+    <div className="left-10 top-full w-full lg:w-[900] max-h-[500px] bg-white shadow-lg border border-gray-200 py-6 px-6 overflow-y-auto z-50">
       <section className="mb-8 bg-blue-50 px-4 py-2">
         <h2 className="text-md font-semibold text-blue-800 mb-4 uppercase tracking-wide">
           BESTSELLING TOURS
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <Link
-            href="#"
-            className="block bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition"
-          >
-            <Image
-              src="/Womens-Special.webp"
-              alt="Women's Special"
-              width={300}
-              height={180}
-              className="w-full h-32 object-cover"
-            />
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Women's Special
-              </h3>
-              <p className="text-xs text-blue-600 mt-1">110 Departures →</p>
-            </div>
-          </Link>
 
-          <Link
-            href="#"
-            className="block bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition"
-          >
-            <Image
-              src="/Seniors-Special.webp"
-              alt="Senior's Special"
-              width={300}
-              height={180}
-              className="w-full h-32 object-cover"
-            />
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Senior's Special
-              </h3>
-              <p className="text-xs text-blue-600 mt-1">83 Departures →</p>
-            </div>
-          </Link>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600 text-sm">Loading tours...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-red-600 text-sm">Failed to load tours</p>
+          </div>
+        ) : randomTours.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500 text-sm">No tours available</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {randomTours.map((tour) => {
+              const totalDepartures =
+                tour.metadata?.totalDepartures || tour.departures?.length || 0;
+              const imageUrl =
+                tour.galleryImages?.[0] || "/placeholder-tour.jpg";
 
-          <Link
-            href="#"
-            className="block bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition"
-          >
-            <Image
-              src="/family-tours.webp"
-              alt="Family Tours"
-              width={300}
-              height={180}
-              className="w-full h-32 object-cover"
-            />
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Family Tour Packages
-              </h3>
-              <p className="text-xs text-blue-600 mt-1">1272 Departures →</p>
-            </div>
-          </Link>
-
-          <Link
-            href="#"
-            className="block bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition"
-          >
-            <Image
-              src="/Womens-Special.webp"
-              alt="Women's Special"
-              width={300}
-              height={180}
-              className="w-full h-32 object-cover"
-            />
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Women's Special
-              </h3>
-              <p className="text-xs text-blue-600 mt-1">110 Departures →</p>
-            </div>
-          </Link>
-        </div>
+              return (
+                <Link
+                  href={`/tour-details/${tour._id}`}
+                  key={tour._id}
+                  className="block bg-white rounded-lg overflow-hidden shadow hover:shadow-md transition"
+                >
+                  <Image
+                    src={imageUrl}
+                    alt={tour.title}
+                    width={300}
+                    height={180}
+                    className="w-full h-32 object-cover"
+                  />
+                  <div className="p-3">
+                    <h3 className="text-sm font-semibold text-gray-800 line-clamp-2">
+                      {tour.title}
+                    </h3>
+                    <p className="text-xs text-blue-600 mt-1">
+                      {totalDepartures}{" "}
+                      {totalDepartures === 1 ? "Departure" : "Departures"} →
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section className="mb-8">

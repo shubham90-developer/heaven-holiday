@@ -63,7 +63,7 @@ const TopNavBar = () => {
         {/* Right: Actions */}
         <div className="flex items-center gap-5 relative">
           <Link
-            href="/travel-planner-details"
+            href="/travel-planners"
             target="_blank"
             className="hidden sm:inline-block text-yellow-400 font-semibold hover:underline text-xs"
           >

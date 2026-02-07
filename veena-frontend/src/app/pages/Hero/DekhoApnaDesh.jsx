@@ -256,7 +256,7 @@ const DekhoApnaDesh = () => {
                         <div className="relative w-1/2">
                           <Image
                             src={
-                              tour.category?.image ||
+                              tour.galleryImages?.[0] ||
                               "/assets/img/tour-card/1.avif"
                             }
                             alt={tour.title}

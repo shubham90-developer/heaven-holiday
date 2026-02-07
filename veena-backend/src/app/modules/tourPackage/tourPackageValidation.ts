@@ -25,6 +25,7 @@ const itinerarySchema = z.object({
 });
 
 // State Schema
+// State Schema
 const stateSchema = z.object({
   name: z
     .string()
@@ -35,6 +36,30 @@ const stateSchema = z.object({
   cities: z
     .array(z.string().trim().min(1, { message: 'City name cannot be empty' }))
     .min(1, { message: 'At least one city is required' }),
+
+  // ⭐ ADD THESE TWO FIELDS
+  region: z
+    .enum(
+      [
+        'North India',
+        'South India',
+        'East & North East India',
+        'Rajasthan, West & Central India',
+      ],
+      {
+        message: 'Invalid region',
+      },
+    )
+    .optional(),
+
+  continent: z
+    .enum(
+      ['Africa', 'Asia', 'Europe', 'North America', 'Oceania', 'South America'],
+      {
+        message: 'Invalid continent',
+      },
+    )
+    .optional(),
 });
 
 // City Details Schema

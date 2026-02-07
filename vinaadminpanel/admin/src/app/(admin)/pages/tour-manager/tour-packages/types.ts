@@ -9,6 +9,8 @@ export type AlertType = {
 export type State = {
   name: string;
   cities: string[];
+  region?: string;
+  continent?: string;
 };
 
 export type CityDetail = {

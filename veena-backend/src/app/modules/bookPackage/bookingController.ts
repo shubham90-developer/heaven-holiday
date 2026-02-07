@@ -967,6 +967,10 @@ export const getAllBookings = async (
             path: 'category',
             select: 'image',
           },
+          {
+            path: 'galleryImages',
+            select: '...galleryImages',
+          },
         ],
       })
       .populate('user', 'name email phone')

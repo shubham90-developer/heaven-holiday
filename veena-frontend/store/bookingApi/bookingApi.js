@@ -14,7 +14,7 @@ export const bookingApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Booking", "BookingList"],
+  tagTypes: ["Booking", "BookingList", "AllBookings"],
   endpoints: (builder) => ({
     // Create a new booking
     createBooking: builder.mutation({
@@ -23,7 +23,7 @@ export const bookingApi = createApi({
         method: "POST",
         body: bookingData,
       }),
-      invalidatesTags: ["BookingList"],
+      invalidatesTags: ["BookingList", "AllBookings"],
     }),
 
     // Get all user bookings
@@ -36,6 +36,18 @@ export const bookingApi = createApi({
         return `/?${params.toString()}`;
       },
       providesTags: ["BookingList"],
+    }),
+
+    // Get ALL bookings (admin)
+    getAllBookings: builder.query({
+      query: ({ status, page = 1, limit = 50 } = {}) => {
+        const params = new URLSearchParams();
+        if (status) params.append("status", status);
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
+        return `/admin/all?${params.toString()}`;
+      },
+      providesTags: ["AllBookings"],
     }),
 
     // Get booking by ID
@@ -64,6 +76,7 @@ export const bookingApi = createApi({
       invalidatesTags: (result, error, { bookingId }) => [
         { type: "Booking", id: bookingId },
         "BookingList",
+        "AllBookings",
       ],
     }),
 
@@ -85,6 +98,7 @@ export const bookingApi = createApi({
         { type: "Booking", id: bookingId },
         { type: "Booking", id: `${bookingId}-summary` },
         "BookingList",
+        "AllBookings",
       ],
     }),
 
@@ -109,6 +123,7 @@ export const bookingApi = createApi({
         { type: "Booking", id: bookingId },
         { type: "Booking", id: `${bookingId}-summary` },
         "BookingList",
+        "AllBookings",
       ],
     }),
 
@@ -121,6 +136,7 @@ export const bookingApi = createApi({
       invalidatesTags: (result, error, { bookingId }) => [
         { type: "Booking", id: bookingId },
         "BookingList",
+        "AllBookings",
       ],
     }),
   }),
@@ -129,6 +145,7 @@ export const bookingApi = createApi({
 export const {
   useCreateBookingMutation,
   useGetUserBookingsQuery,
+  useGetAllBookingsQuery,
   useGetBookingByIdQuery,
   useGetBookingSummaryQuery,
   useAddPaymentMutation,

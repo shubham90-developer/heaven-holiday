@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
 import { List, LayoutGrid, ArrowUpDown, Check } from "lucide-react";
 
-const TopBar = ({ total, start, end, view, setView }) => {
+const TopBar = ({ total = 0, packages = [], onSort }) => {
   const [sort, setSort] = useState("deals");
   const [open, setOpen] = useState(false);
 
@@ -13,11 +14,67 @@ const TopBar = ({ total, start, end, view, setView }) => {
     "popularity",
   ];
 
+  // Sort logic
+  const handleSort = (option) => {
+    setSort(option);
+    setOpen(false);
+
+    if (!packages.length || !onSort) return;
+
+    let sorted = [...packages];
+
+    switch (option) {
+      case "price low to high":
+        sorted.sort(
+          (a, b) =>
+            (a.baseFullPackagePrice || a.baseJoiningPrice || 0) -
+            (b.baseFullPackagePrice || b.baseJoiningPrice || 0),
+        );
+        break;
+
+      case "price high to low":
+        sorted.sort(
+          (a, b) =>
+            (b.baseFullPackagePrice || b.baseJoiningPrice || 0) -
+            (a.baseFullPackagePrice || a.baseJoiningPrice || 0),
+        );
+        break;
+
+      case "duration":
+        sorted.sort((a, b) => (a.days || 0) - (b.days || 0));
+        break;
+
+      case "popularity":
+        sorted.sort((a, b) => {
+          const seatsA =
+            a.departures?.reduce((sum, d) => sum + (d.totalSeats || 0), 0) || 0;
+          const seatsB =
+            b.departures?.reduce((sum, d) => sum + (d.totalSeats || 0), 0) || 0;
+          return seatsB - seatsA;
+        });
+        break;
+
+      case "deals":
+      default:
+        // Reset to original order (as they come from filter)
+        sorted = [...packages]; // ← This keeps the filtered order
+    }
+
+    onSort(sorted);
+  };
+
+  // Apply initial sort when packages change
+  useEffect(() => {
+    if (packages.length > 0 && onSort) {
+      handleSort(sort);
+    }
+  }, [packages]);
+
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between bg-gray-100 mb-5 gap-3 p-3 rounded-md relative">
       {/* Left text */}
       <p className="text-sm text-gray-700 text-center md:text-left">
-        Showing {start}-{end} packages from {total} packages
+        Showing {total} package{total !== 1 ? "s" : ""}
       </p>
 
       {/* Right controls */}
@@ -43,11 +100,8 @@ const TopBar = ({ total, start, end, view, setView }) => {
               {sortOptions.map((option) => (
                 <div
                   key={option}
-                  onClick={() => {
-                    setSort(option);
-                    setOpen(false);
-                  }}
-                  className={`flex items-center px-4 py-1 text-sm capitalize cursor-pointer hover:bg-gray-100 ${
+                  onClick={() => handleSort(option)}
+                  className={`flex items-center px-4 py-2 text-sm capitalize cursor-pointer hover:bg-gray-100 ${
                     sort === option
                       ? "font-semibold text-blue-600"
                       : "text-gray-700"

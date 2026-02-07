@@ -6,6 +6,10 @@ import { useGetProfileQuery } from "store/authApi/authApi";
 import { useGetUserBookingsQuery } from "store/bookingApi/bookingApi";
 
 const TravalPlanCards = () => {
+  const token = localStorage.getItem("authToken");
+  if (!token) {
+    return null;
+  }
   const {
     data: profile,
     isLoading: profileLoading,
