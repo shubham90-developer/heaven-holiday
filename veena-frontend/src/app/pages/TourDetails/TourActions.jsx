@@ -4,22 +4,62 @@ import React, { useState } from "react";
 import { Heart, Download, Mail, Share2, X, Copy } from "lucide-react";
 import Link from "next/link";
 import { FaFacebook, FaWhatsapp } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 import { useAddToWishlistMutation } from "store/authApi/authApi";
-const TourActions = () => {
+import { auth } from "@/app/config/firebase";
+
+const TourActions = ({ packageId }) => {
+  const router = useRouter();
   const [activeModal, setActiveModal] = useState(null);
+  const [addToWishlist] = useAddToWishlistMutation();
 
   const closeModal = () => setActiveModal(null);
+
+  const handleAddToWishlist = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      // Check if user is authenticated
+      const token = localStorage.getItem("authToken");
+
+      if (!token && !auth.currentUser) {
+        alert("Please login first");
+        router.push("/login");
+        return;
+      }
+
+      // Backend gets Firebase UID from token automatically
+      await addToWishlist({ packageId }).unwrap();
+      alert("Package added to wishlist successfully!");
+
+      // Redirect to wishlist page
+      router.push("/account/wishlist");
+    } catch (error) {
+      console.error("Wishlist error:", error);
+      console.log("Error data:", error?.data);
+      console.log("Error message:", error?.data?.message);
+
+      if (error?.data?.message) {
+        alert(error.data.message);
+      } else if (error?.message) {
+        alert(error.message);
+      } else {
+        alert("Failed to add to wishlist");
+      }
+    }
+  };
 
   return (
     <div>
       {/* Bottom buttons */}
       <div className="flex justify-between text-xs text-blue-800 items-center gap-4 mt-4">
-        <Link
-          href="/account/wishlist"
+        <button
+          onClick={handleAddToWishlist}
           className="flex items-center gap-1 cursor-pointer"
         >
           <Heart className="w-4 h-4" /> Wishlist
-        </Link>
+        </button>
 
         <button
           onClick={() => setActiveModal("email")}

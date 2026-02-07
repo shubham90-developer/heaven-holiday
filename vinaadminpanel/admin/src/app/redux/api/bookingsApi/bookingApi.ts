@@ -2,12 +2,6 @@
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-interface GetUserBookingsParams {
-  status?: string;
-  page?: number;
-  limit?: number;
-}
-
 export const bookingApi = createApi({
   reducerPath: "bookingApi",
   baseQuery: fetchBaseQuery({
@@ -16,9 +10,10 @@ export const bookingApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Booking", "BookingList"],
+  tagTypes: ["Booking", "BookingList", "Refunds"],
   endpoints: (builder) => ({
-    getAllBookings: builder.query<any, void | GetUserBookingsParams>({
+    // Get all bookings
+    getAllBookings: builder.query<any, any>({
       query: (params) => {
         const { status, page = 1, limit = 50 } = params || {};
         const urlParams = new URLSearchParams();
@@ -30,18 +25,43 @@ export const bookingApi = createApi({
       providesTags: ["BookingList"],
     }),
 
+    // Delete booking
     deleteBooking: builder.mutation<any, string>({
       query: (bookingId) => ({
         url: `/admin/${bookingId}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["BookingList"],
+      invalidatesTags: ["BookingList", "Refunds"],
+    }),
+
+    // Get all pending refunds
+    getAllPendingRefunds: builder.query<any, any>({
+      query: (params) => {
+        const { status, page = 1, limit = 50 } = params || {};
+        const urlParams = new URLSearchParams();
+        if (status) urlParams.append("status", status);
+        urlParams.append("page", page.toString());
+        urlParams.append("limit", limit.toString());
+        return `/admin/refunds/pending?${urlParams.toString()}`;
+      },
+      providesTags: ["Refunds"],
+    }),
+
+    // Update refund status
+    updateRefundStatus: builder.mutation<any, any>({
+      query: ({ bookingId, refundId, ...body }) => ({
+        url: `/admin/refunds/${bookingId}/${refundId}/status`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Refunds", "BookingList"],
     }),
   }),
 });
 
 export const {
-  // Admin hooks
   useGetAllBookingsQuery,
   useDeleteBookingMutation,
+  useGetAllPendingRefundsQuery,
+  useUpdateRefundStatusMutation,
 } = bookingApi;

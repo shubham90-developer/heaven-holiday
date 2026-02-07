@@ -218,6 +218,45 @@ const PaymentSchema = new Schema<IPayment>(
   { _id: true },
 );
 
+// In bookingModel.ts - ADD THIS
+
+const RefundSchema = new Schema(
+  {
+    refundId: {
+      type: String,
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    status: {
+      type: String,
+      enum: ['Pending', 'Approved', 'Rejected', 'Completed'],
+      default: 'Pending',
+    },
+    paymentId: String,
+    razorpayRefundId: String,
+    reason: String,
+    requestedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    approvedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    processedAt: Date,
+    remarks: String,
+  },
+  { _id: true },
+);
+
 // ========== MAIN BOOKING SCHEMA ==========
 
 const BookingSchema = new Schema<IBooking>(
@@ -289,6 +328,10 @@ const BookingSchema = new Schema<IBooking>(
       type: [PaymentSchema],
       default: [],
     },
+    refunds: {
+      type: [RefundSchema],
+      default: [],
+    },
 
     // Status
     bookingStatus: {
@@ -351,9 +394,14 @@ BookingSchema.pre('save', function (next) {
     };
   }
 
-  // Calculate pending amount
-  this.pricing.pendingAmount =
-    this.pricing.totalAmount - (this.pricing.paidAmount || 0);
+  // // Calculate pending amount
+  // this.pricing.pendingAmount =
+  //   this.pricing.totalAmount - (this.pricing.paidAmount || 0);
+  // Calculate pending amount (ensure it's never negative)
+  this.pricing.pendingAmount = Math.max(
+    0,
+    this.pricing.totalAmount - (this.pricing.paidAmount || 0),
+  );
 
   next();
 });
@@ -369,15 +417,21 @@ BookingSchema.methods.updatePaymentStatus = function (): void {
   const totalPaid = this.calculateTotalPaid();
   this.pricing.paidAmount = totalPaid;
 
+  const minimumRequired = this.pricing.totalAmount * 0.5; // 50% minimum
+
   if (totalPaid === 0) {
     this.paymentStatus = 'Pending';
     this.bookingStatus = 'Pending';
   } else if (totalPaid >= this.pricing.totalAmount) {
     this.paymentStatus = 'Fully Paid';
     this.bookingStatus = 'Confirmed';
-  } else if (totalPaid >= this.pricing.advanceAmount) {
+  } else if (totalPaid >= minimumRequired) {
     this.paymentStatus = 'Advance Paid';
     this.bookingStatus = 'Confirmed';
+  } else {
+    // Less than 50% paid
+    this.paymentStatus = 'Pending';
+    this.bookingStatus = 'Pending';
   }
 };
 

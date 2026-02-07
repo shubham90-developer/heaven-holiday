@@ -8,6 +8,7 @@ import { Phone } from "lucide-react";
 import Link from "next/link";
 import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
 import { useGetContactDetailsQuery } from "store/aboutUsApi/contactApi";
+import { useGetOfferBannerQuery } from "store/offer-banner/offer-bannerApi";
 const slides = [
   { id: 1, img: "/assets/img/discover-world/1.avif" },
   { id: 2, img: "/assets/img/discover-world/2.avif" },
@@ -22,10 +23,19 @@ const DiscoverWorldSlide = () => {
     isLoading: contactDetailsLoading,
     error: contactDetailsError,
   } = useGetContactDetailsQuery();
-  if (contactDetailsLoading) {
+  const {
+    data: banner,
+    isLoading: bannerLoading,
+    error: bannerError,
+  } = useGetOfferBannerQuery();
+  console.log("banner", banner);
+  const activeBanners = banner?.data[0].banners.filter((item) => {
+    return item.status === "active";
+  });
+  if (contactDetailsLoading || bannerLoading) {
     return <p>loading</p>;
   }
-  if (contactDetailsError) {
+  if (contactDetailsError || bannerError) {
     return <p>error</p>;
   }
 
@@ -50,12 +60,12 @@ const DiscoverWorldSlide = () => {
             speed={800}
             className="rounded-lg"
           >
-            {slides.map((slide) => (
-              <SwiperSlide key={slide.id}>
+            {activeBanners.map((slide) => (
+              <SwiperSlide key={slide._id}>
                 <div className="relative rounded-xl overflow-hidden px-4">
                   <img
-                    src={slide.img}
-                    alt={`Discover ${slide.id}`}
+                    src={slide.image}
+                    alt={`Discover ${slide._id}`}
                     className="w-full h-[240px] sm:h-[320px] md:h-[420px] object-cover rounded-xl"
                   />
                 </div>

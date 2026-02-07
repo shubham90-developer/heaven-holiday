@@ -1,29 +1,92 @@
 "use client";
 import Link from "next/link";
-import React, { useState } from "react";
-import { useGetAllTabCardsQuery } from "store/tabCards/tabcardApi";
+import React, { useState, useMemo } from "react";
+import {
+  useGetTourPackageQuery,
+  useGetCategoriesQuery,
+} from "store/toursManagement/toursPackagesApi";
+import { useGetUserBookingsQuery } from "store/bookingApi/bookingApi";
+
 const TabCards = () => {
   const [activeTab, setActiveTab] = useState("world");
+
   const {
-    data: tabcardData,
-    isLoading: tabcardLoading,
-    error: tabcardError,
-  } = useGetAllTabCardsQuery();
-  if (tabcardLoading) {
-    return <p>loading</p>;
+    data: tourPackages,
+    isLoading: tourPackagesLoading,
+    error: tourPackagesError,
+  } = useGetTourPackageQuery();
+
+  const {
+    data: categories,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useGetCategoriesQuery();
+
+  const {
+    data: bookings,
+    isLoading: bookingsLoading,
+    error: bookingsError,
+  } = useGetUserBookingsQuery();
+
+  // Get active categories filtered by type
+  const activeCategories = useMemo(() => {
+    if (!categories?.data) return [];
+    return categories.data.filter(
+      (cat) => cat.status === "Active" && cat.categoryType === activeTab,
+    );
+  }, [categories, activeTab]);
+
+  // Get active tour packages
+  const activeTourPackages = useMemo(() => {
+    if (!tourPackages?.data) return [];
+    return tourPackages.data.filter((pkg) => pkg.status === "Active");
+  }, [tourPackages]);
+
+  // Count packages per category
+  const packageCountByCategory = useMemo(() => {
+    const counts = {};
+    activeTourPackages.forEach((pkg) => {
+      const categoryId = pkg.category?._id;
+      if (categoryId) {
+        counts[categoryId] = (counts[categoryId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [activeTourPackages]);
+
+  // Count bookings per category
+  const bookingCountByCategory = useMemo(() => {
+    if (!bookings?.data?.bookings) return {};
+
+    const counts = {};
+    bookings.data.bookings.forEach((booking) => {
+      const categoryId = booking.tourPackage?.category?._id;
+      if (categoryId) {
+        counts[categoryId] = (counts[categoryId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [bookings]);
+
+  if (tourPackagesLoading || categoriesLoading || bookingsLoading) {
+    return (
+      <section className="py-10">
+        <div className="max-w-6xl mx-auto px-2 text-center">
+          <p>Loading...</p>
+        </div>
+      </section>
+    );
   }
-  if (tabcardError) {
-    return <p>error</p>;
+
+  if (tourPackagesError || categoriesError) {
+    return (
+      <section className="py-10">
+        <div className="max-w-6xl mx-auto px-2 text-center">
+          <p>Error loading data</p>
+        </div>
+      </section>
+    );
   }
-
-  const cards = tabcardData?.data?.cards || [];
-  const activeCards = cards.filter((item) => item.isActive === true);
-
-  // Filter cards by category
-  const worldData = activeCards.filter((item) => item.category === "world");
-  const indiaData = activeCards.filter((item) => item.category === "india");
-
-  const data = activeTab === "world" ? worldData : indiaData;
 
   return (
     <section className="py-10">
@@ -54,51 +117,55 @@ const TabCards = () => {
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {data.map((item) => (
-            <Link
-              href={item.link}
-              key={item._id}
-              className="relative rounded-lg overflow-hidden shadow hover:shadow-lg transition block"
-            >
-              {/* Background Image */}
-              <img
-                src={item.image}
-                alt={item.title}
-                className="w-full h-56 object-cover"
-              />
+          {activeCategories.length > 0 ? (
+            activeCategories.map((category) => {
+              const packageCount = packageCountByCategory[category._id] || 0;
+              const guestsCount = bookingCountByCategory[category._id] || 0;
 
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"></div>
+              return (
+                <Link
+                  href={`/category/${category._id}`}
+                  key={category._id}
+                  className="relative rounded-lg overflow-hidden shadow hover:shadow-lg transition block"
+                >
+                  {/* Background Image */}
+                  <img
+                    src={category.image || "/assets/img/tour-card/1.avif"}
+                    alt={category.name}
+                    className="w-full h-56 object-cover"
+                  />
 
-              {/* Title & Badge */}
-              {/* Title & Badge Centered */}
-              <div className="absolute inset-0 flex flex-col items-center mt-2 text-center px-2">
-                <h3 className="text-lg font-semibold text-white drop-shadow">
-                  {item.title}
-                </h3>
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"></div>
 
-                {item.badge && (
-                  <span className="mt-2 inline-block bg-red-700 text-white text-xs font-medium px-2 py-1 rounded">
-                    {item.badge}
-                  </span>
-                )}
-              </div>
+                  {/* Title & Badge Centered */}
+                  <div className="absolute inset-0 flex flex-col items-center mt-2 text-center px-2">
+                    <h3 className="text-lg font-semibold text-white drop-shadow">
+                      {category.name}
+                    </h3>
 
-              {/* Bottom Info */}
-              <div className="absolute bottom-3 left-3 right-3 bg-white/90 text-center py-2 rounded-md">
-                <p className="text-sm font-medium">
-                  <strong>{item.tours}</strong> tours |{" "}
-                  <strong>{item.departures}</strong> departures
-                </p>
-                <p className="text-xs font-bold text-black">
-                  {item.guests}{" "}
-                  <span className="text-xs font-semibold text-gray-700">
-                    guests travelled
-                  </span>
-                </p>
-              </div>
-            </Link>
-          ))}
+                    {category.badge && (
+                      <span className="mt-2 inline-block bg-red-700 text-white text-xs font-medium px-2 py-1 rounded">
+                        {category.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bottom Info */}
+                  <div className="absolute bottom-3 left-3 right-3 bg-white/90 text-center py-2 rounded-md">
+                    <p className="text-sm font-medium">
+                      <strong>{packageCount}</strong> tours |{" "}
+                      <strong>{guestsCount}</strong> guests travelled
+                    </p>
+                  </div>
+                </Link>
+              );
+            })
+          ) : (
+            <div className="col-span-full text-center text-gray-500">
+              No categories available
+            </div>
+          )}
         </div>
       </div>
     </section>

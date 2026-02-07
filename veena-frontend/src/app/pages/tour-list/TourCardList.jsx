@@ -7,14 +7,23 @@ import {
   Bus,
   Camera,
   Cookie,
+  Heart,
   PlaneTakeoff,
   User,
 } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useGetCategoriesQuery } from "store/toursManagement/toursPackagesApi";
 import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
+import {
+  useAddToWishlistMutation,
+  useRemoveFromWishlistMutation,
+  useGetProfileQuery,
+} from "store/authApi/authApi";
+import { auth } from "@/app/config/firebase";
 
-const TourCard = ({ tour }) => {
+const TourCard = ({ tour, wishlistItems, handleToggleWishlist }) => {
+  const isInWishlist = wishlistItems.has(tour._id);
+
   return (
     <div className="border border-gray-300 rounded-lg shadow-xs flex flex-col md:flex-row p-3 bg-white mb-4">
       {/* Left Image */}
@@ -28,16 +37,27 @@ const TourCard = ({ tour }) => {
         />
 
         {/* Wishlist */}
-        <Link href="/wishlist">
-          <div className="absolute top-2 right-2 group">
-            <button className="bg-white rounded-full p-2 shadow hover:bg-red-50 transition">
-              <FaHeart className="text-gray-500 group-hover:text-red-500" />
-            </button>
-            <span className="absolute right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition bg-black text-white text-xs px-2 py-1 rounded">
-              Add to Wishlist
-            </span>
-          </div>
-        </Link>
+        <div className="absolute top-2 right-2 group">
+          <button
+            className={`p-2 rounded-full shadow ${
+              isInWishlist
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-white hover:bg-red-50"
+            } transition cursor-pointer`}
+            onClick={(e) => handleToggleWishlist(tour._id, e)}
+          >
+            <Heart
+              className={`w-4 h-4 ${
+                isInWishlist
+                  ? "text-white fill-white"
+                  : "text-gray-500 group-hover:text-red-500"
+              }`}
+            />
+          </button>
+          <span className="absolute right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+            {isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+          </span>
+        </div>
       </div>
 
       {/* Right Content */}
@@ -197,14 +217,14 @@ const TourCard = ({ tour }) => {
         >
           View Tour Details
         </Link>
-        <div className="mt-4 flex gap-6 text-xs">
+        {/* <div className="mt-4 flex gap-6 text-xs">
           <Link href="/compare-tours" className="text-black">
             🔄 Compare
           </Link>
           <Link href="#" className="text-black">
             💬 Enquire Now
           </Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );
@@ -212,6 +232,7 @@ const TourCard = ({ tour }) => {
 
 // ✅ Main component: maps tours
 const TourCardList = () => {
+  const router = useRouter();
   const { id: categoryId } = useParams();
   const [currentPage, setCurrentPage] = useState(1);
   const toursPerPage = 5;
@@ -227,6 +248,25 @@ const TourCardList = () => {
     isLoading: tourpackageLoading,
     error: tourpackageError,
   } = useGetTourPackageQuery();
+
+  // Wishlist hooks
+  const [addToWishlist] = useAddToWishlistMutation();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
+  const {
+    data: wishlist,
+    isLoading: wishlistLoading,
+    error: wishlistError,
+  } = useGetProfileQuery();
+
+  const [wishlistItems, setWishlistItems] = React.useState(new Set());
+
+  // Load wishlist from user data
+  React.useEffect(() => {
+    if (wishlist?.data?.wishlist) {
+      const ids = new Set(wishlist.data.wishlist.map((id) => id.toString()));
+      setWishlistItems(ids);
+    }
+  }, [wishlist]);
 
   // Get category and filter tour packages
   const category = categories?.data?.find((item) => {
@@ -248,6 +288,55 @@ const TourCardList = () => {
   const currentTours = tourPackages.slice(indexOfFirst, indexOfLast);
 
   const totalPages = Math.ceil(tourPackages.length / toursPerPage);
+
+  // Handle toggle wishlist
+  const handleToggleWishlist = async (packageId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const token = localStorage.getItem("authToken");
+    if (!token && !auth.currentUser) {
+      alert("Please login first");
+      router.push("/login");
+      return;
+    }
+
+    const isInWishlist = wishlistItems.has(packageId);
+
+    // Optimistic update
+    if (isInWishlist) {
+      setWishlistItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(packageId);
+        return newSet;
+      });
+    } else {
+      setWishlistItems((prev) => new Set(prev).add(packageId));
+    }
+
+    try {
+      if (isInWishlist) {
+        await removeFromWishlist({ packageId }).unwrap();
+      } else {
+        await addToWishlist({ packageId }).unwrap();
+      }
+    } catch (error) {
+      // Rollback on error
+      console.error("Wishlist error:", error);
+
+      if (isInWishlist) {
+        setWishlistItems((prev) => new Set(prev).add(packageId));
+      } else {
+        setWishlistItems((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(packageId);
+          return newSet;
+        });
+      }
+
+      alert(error?.data?.message || "Failed to update wishlist");
+    }
+  };
 
   // Loading state
   if (categoriesLoading || tourpackageLoading) {
@@ -274,7 +363,12 @@ const TourCardList = () => {
     <div>
       {/* Render tours */}
       {currentTours.map((tour) => (
-        <TourCard key={tour._id} tour={tour} />
+        <TourCard
+          key={tour._id}
+          tour={tour}
+          wishlistItems={wishlistItems}
+          handleToggleWishlist={handleToggleWishlist}
+        />
       ))}
 
       {/* Pagination Controls */}

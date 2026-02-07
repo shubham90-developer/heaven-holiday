@@ -23,9 +23,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <Toaster position="top-right" />
-      <ReduxProvider>
-        <body className={`${jura.variable} antialiased`}>
+      <head>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+      </head>
+      <body className={`${jura.variable} antialiased`}>
+        <ReduxProvider>
+          <Toaster position="top-right" />
           <TopNavBar />
           <MainNavbar />
           {children}
@@ -33,9 +36,8 @@ export default function RootLayout({ children }) {
           <FooterInfo />
           <FooterContactInfo />
           <Footer />
-          <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-        </body>
-      </ReduxProvider>
+        </ReduxProvider>
+      </body>
     </html>
   );
 }

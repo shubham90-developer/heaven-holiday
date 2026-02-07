@@ -23,7 +23,7 @@ router.delete('/:id', deletePodcast);
 
 router.get('/:id/episodes', getEpisodes);
 
-router.post('/:id/episodes', addEpisode);
+router.post('/:id/episodes', upload.single('audio'), addEpisode);
 
 router.put('/:id/episodes/:episodeId', updateEpisode);
 

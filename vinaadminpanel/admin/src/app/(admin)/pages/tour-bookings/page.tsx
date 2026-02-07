@@ -4,14 +4,16 @@ import React, { useState } from "react";
 import {
   useGetAllBookingsQuery,
   useDeleteBookingMutation,
+  useGetAllPendingRefundsQuery,
+  useUpdateRefundStatusMutation,
 } from "@/app/redux/api/bookingsApi/bookingApi";
-
+import { Tabs, Tab } from "react-bootstrap";
 import ComponentContainerCard from "@/components/ComponentContainerCard";
-import { Row, Col, Alert, Modal, Button } from "react-bootstrap";
+import { Row, Col, Alert, Modal, Button, Form } from "react-bootstrap";
 import PageTitle from "@/components/PageTitle";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 
-type ModalType = "view" | null;
+type ModalType = "view" | "refund" | null;
 type AlertType = {
   show: boolean;
   message: string;
@@ -20,19 +22,51 @@ type AlertType = {
 
 const BookingEnquiriesPage: React.FC = () => {
   const { data: bookingsData, isLoading } = useGetAllBookingsQuery(undefined);
+  const { data: refundsData, isLoading: isLoadingRefunds } =
+    useGetAllPendingRefundsQuery({ status: "Pending" });
   const [deleteBooking] = useDeleteBookingMutation();
+  const [updateRefundStatus, { isLoading: isUpdatingRefund }] =
+    useUpdateRefundStatusMutation();
+  const [searchTerm, setSearchTerm] = useState("");
+  const allBookings = bookingsData?.data?.bookings || [];
+  const pendingRefunds = refundsData?.data?.refunds || [];
 
-  const bookings = bookingsData?.data?.bookings || [];
+  const bookings = allBookings.filter((booking: any) => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    return (
+      booking.bookingId?.toLowerCase().includes(search) ||
+      booking.bookingStatus?.toLowerCase().includes(search) ||
+      booking.paymentStatus?.toLowerCase().includes(search) ||
+      booking.leadTraveler?.name?.toLowerCase().includes(search) ||
+      booking.leadTraveler?.email?.toLowerCase().includes(search) ||
+      booking.leadTraveler?.phone?.includes(search) ||
+      booking.tourPackage?.title?.toLowerCase().includes(search) ||
+      booking.selectedDeparture?.departureCity?.toLowerCase().includes(search)
+    );
+  });
 
   // Modal state
   const [modalType, setModalType] = useState<ModalType>(null);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
-
+  const [selectedRefund, setSelectedRefund] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("all");
   const [alert, setAlert] = useState<AlertType>({
     show: false,
     message: "",
     variant: "success",
   });
+
+  // Refund form state
+  const [refundStatus, setRefundStatus] = useState<
+    "Approved" | "Rejected" | "Completed"
+  >("Approved");
+  const [refundRemarks, setRefundRemarks] = useState("");
+  const [transactionId, setTransactionId] = useState("");
+
+  const cancelledBookings = bookings.filter(
+    (booking: any) => booking.bookingStatus === "Cancelled",
+  );
 
   const showAlert = (message: string, variant: AlertType["variant"]) => {
     setAlert({ show: true, message, variant });
@@ -44,11 +78,20 @@ const BookingEnquiriesPage: React.FC = () => {
   const handleCloseModal = () => {
     setModalType(null);
     setSelectedBooking(null);
+    setSelectedRefund(null);
+    setRefundStatus("Approved");
+    setRefundRemarks("");
+    setTransactionId("");
   };
 
   const handleOpenViewModal = (booking: any) => {
     setSelectedBooking(booking);
     setModalType("view");
+  };
+
+  const handleOpenRefundModal = (refund: any) => {
+    setSelectedRefund(refund);
+    setModalType("refund");
   };
 
   const handleDelete = async (id: string, bookingId: string) => {
@@ -60,6 +103,38 @@ const BookingEnquiriesPage: React.FC = () => {
       showAlert("Booking deleted successfully!", "success");
     } catch (err: any) {
       showAlert(err?.data?.message || "Failed to delete booking.", "danger");
+    }
+  };
+
+  const handleUpdateRefund = async () => {
+    if (!selectedRefund) return;
+
+    try {
+      const payload: any = {
+        status: refundStatus,
+        remarks: refundRemarks || undefined,
+      };
+
+      if (transactionId) {
+        payload.transactionId = transactionId;
+      }
+
+      await updateRefundStatus({
+        bookingId: selectedRefund.bookingId,
+        refundId: selectedRefund.refundId,
+        ...payload,
+      }).unwrap();
+
+      showAlert(
+        `Refund ${refundStatus.toLowerCase()} successfully!`,
+        "success",
+      );
+      handleCloseModal();
+    } catch (err: any) {
+      showAlert(
+        err?.data?.message || "Failed to update refund status.",
+        "danger",
+      );
     }
   };
 
@@ -82,12 +157,33 @@ const BookingEnquiriesPage: React.FC = () => {
     return statusColors[status] || "bg-secondary";
   };
 
+  const getRefundStatusBadge = (status: string) => {
+    const statusColors: Record<string, string> = {
+      Pending: "bg-warning",
+      Approved: "bg-info",
+      Completed: "bg-success",
+      Rejected: "bg-danger",
+    };
+    return statusColors[status] || "bg-secondary";
+  };
+
   const formatDate = (date: string | null) => {
     if (!date) return "N/A";
     return new Date(date).toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
       year: "numeric",
+    });
+  };
+
+  const formatDateTime = (date: string | null) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -107,6 +203,208 @@ const BookingEnquiriesPage: React.FC = () => {
       </div>
     );
   }
+
+  const renderBookingsTable = (data: any[], tabName: string) => {
+    if (data.length === 0) {
+      return (
+        <div className="text-center py-5">
+          <IconifyIcon
+            icon="solar:inbox-bold-duotone"
+            className="fs-1 text-muted mb-3"
+          />
+          <p className="text-muted mb-3">
+            {tabName === "all" && "No bookings found!"}
+            {tabName === "cancelled" && "No cancelled bookings found!"}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="table-responsive-sm">
+        <table className="table table-striped-columns mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Booking ID</th>
+              <th>Tour</th>
+              <th>Lead Traveler</th>
+              <th>Dept. City</th>
+              <th>Dept. Date</th>
+              <th>Travelers</th>
+              <th>Total Amount</th>
+              <th>Payment Status</th>
+              <th>Booking Status</th>
+              <th>Booked On</th>
+              <th className="text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((booking: any, index: number) => (
+              <tr key={booking._id || index}>
+                <td>{index + 1}</td>
+                <td>
+                  <strong>{booking.bookingId}</strong>
+                </td>
+                <td>{booking.tourPackage?.title || "N/A"}</td>
+                <td>
+                  {booking.leadTraveler?.name || "N/A"}
+                  {booking.leadTraveler?.email && <br />}
+                  <small className="text-muted">
+                    {booking.leadTraveler?.email || ""}
+                  </small>
+                  {booking.leadTraveler?.phone && <br />}
+                  <small className="text-muted">
+                    {booking.leadTraveler?.phone || ""}
+                  </small>
+                </td>
+                <td>{booking.selectedDeparture?.departureCity || "N/A"}</td>
+                <td>{formatDate(booking.selectedDeparture?.departureDate)}</td>
+                <td>
+                  {booking.travelerCount?.adults || 0}A{" "}
+                  {booking.travelerCount?.children || 0}C{" "}
+                  {booking.travelerCount?.infants || 0}I
+                </td>
+                <td>{formatPrice(booking.pricing?.totalAmount)}</td>
+                <td>
+                  <span
+                    className={`badge ${getPaymentStatusBadge(booking.paymentStatus)}`}
+                  >
+                    {booking.paymentStatus}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    className={`badge ${getBookingStatusBadge(booking.bookingStatus)}`}
+                  >
+                    {booking.bookingStatus}
+                  </span>
+                </td>
+                <td>{formatDate(booking.bookingDate)}</td>
+                <td className="text-center">
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleOpenViewModal(booking);
+                    }}
+                    className="link-reset fs-20 p-1"
+                    title="View Details"
+                  >
+                    <IconifyIcon icon="tabler:eye" />
+                  </a>
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleDelete(booking._id, booking.bookingId);
+                    }}
+                    className="link-reset fs-20 p-1"
+                    title="Delete Booking"
+                  >
+                    <IconifyIcon icon="tabler:trash" />
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const renderRefundsTable = () => {
+    if (isLoadingRefunds) {
+      return (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading refunds...</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (pendingRefunds.length === 0) {
+      return (
+        <div className="text-center py-5">
+          <IconifyIcon
+            icon="solar:inbox-bold-duotone"
+            className="fs-1 text-muted mb-3"
+          />
+          <p className="text-muted mb-3">No pending refunds found!</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="table-responsive-sm">
+        <table className="table table-striped-columns mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Refund ID</th>
+              <th>Booking ID</th>
+              <th>User</th>
+              <th>Tour</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Reason</th>
+              <th>Requested On</th>
+              <th className="text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pendingRefunds.map((refund: any, index: number) => (
+              <tr key={refund.refundId || index}>
+                <td>{index + 1}</td>
+                <td>
+                  <strong>{refund.refundId}</strong>
+                </td>
+                <td>{refund.bookingId}</td>
+                <td>
+                  {refund.user?.name || "N/A"}
+                  {refund.user?.email && <br />}
+                  <small className="text-muted">
+                    {refund.user?.email || ""}
+                  </small>
+                  {refund.user?.phone && <br />}
+                  <small className="text-muted">
+                    {refund.user?.phone || ""}
+                  </small>
+                </td>
+                <td>{refund.tourName || "N/A"}</td>
+                <td>{formatPrice(refund.amount)}</td>
+                <td>
+                  <span
+                    className={`badge ${getRefundStatusBadge(refund.status)}`}
+                  >
+                    {refund.status}
+                  </span>
+                </td>
+                <td>
+                  <small>{refund.reason || "N/A"}</small>
+                </td>
+                <td>{formatDateTime(refund.requestedDate)}</td>
+                <td className="text-center">
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleOpenRefundModal(refund);
+                    }}
+                    className="link-reset fs-20 p-1"
+                    title="Process Refund"
+                  >
+                    <IconifyIcon icon="tabler:edit" />
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -141,111 +439,39 @@ const BookingEnquiriesPage: React.FC = () => {
             title="All Bookings"
             description="View and manage all user bookings."
           >
-            {bookings.length > 0 ? (
-              <div className="table-responsive-sm">
-                <table className="table table-striped-columns mb-0">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Booking ID</th>
-                      <th>Tour</th>
-                      <th>Lead Traveler</th>
-                      <th>Dept. City</th>
-                      <th>Dept. Date</th>
-                      <th>Travelers</th>
-                      <th>Total Amount</th>
-                      <th>Payment Status</th>
-                      <th>Booking Status</th>
-                      <th>Booked On</th>
-                      <th className="text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((booking: any, index: number) => (
-                      <tr key={booking._id || index}>
-                        <td>{index + 1}</td>
-                        <td>
-                          <strong>{booking.bookingId}</strong>
-                        </td>
-                        <td>{booking.tourPackage?.title || "N/A"}</td>
-                        <td>
-                          {booking.leadTraveler?.name || "N/A"}
-                          {booking.leadTraveler?.email && <br />}
-                          <small className="text-muted">
-                            {booking.leadTraveler?.email || ""}
-                          </small>
-                          {booking.leadTraveler?.phone && <br />}
-                          <small className="text-muted">
-                            {booking.leadTraveler?.phone || ""}
-                          </small>
-                        </td>
-                        <td>
-                          {booking.selectedDeparture?.departureCity || "N/A"}
-                        </td>
-                        <td>
-                          {formatDate(booking.selectedDeparture?.departureDate)}
-                        </td>
-                        <td>
-                          {booking.travelerCount?.adults || 0}A{" "}
-                          {booking.travelerCount?.children || 0}C{" "}
-                          {booking.travelerCount?.infants || 0}I
-                        </td>
-                        <td>{formatPrice(booking.pricing?.totalAmount)}</td>
-                        <td>
-                          <span
-                            className={`badge ${getPaymentStatusBadge(booking.paymentStatus)}`}
-                          >
-                            {booking.paymentStatus}
-                          </span>
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${getBookingStatusBadge(booking.bookingStatus)}`}
-                          >
-                            {booking.bookingStatus}
-                          </span>
-                        </td>
-                        <td>{formatDate(booking.bookingDate)}</td>
-                        <td className="text-center">
-                          {/* View */}
-                          <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleOpenViewModal(booking);
-                            }}
-                            className="link-reset fs-20 p-1"
-                            title="View Details"
-                          >
-                            <IconifyIcon icon="tabler:eye" />
-                          </a>
-                          {/* Delete */}
-                          <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleDelete(booking._id, booking.bookingId);
-                            }}
-                            className="link-reset fs-20 p-1"
-                            title="Delete Booking"
-                          >
-                            <IconifyIcon icon="tabler:trash" />
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-5">
-                <IconifyIcon
-                  icon="solar:inbox-bold-duotone"
-                  className="fs-1 text-muted mb-3"
-                />
-                <p className="text-muted mb-3">No bookings found!</p>
-              </div>
-            )}
+            <div className="mb-3">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search by Booking ID, Name, Email, Phone, Tour, Status..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <Tabs
+              activeKey={activeTab}
+              onSelect={(k) => setActiveTab(k || "all")}
+              className="mb-3"
+            >
+              {/* ALL BOOKINGS TAB */}
+              <Tab eventKey="all" title="All Bookings">
+                {renderBookingsTable(bookings, "all")}
+              </Tab>
+
+              {/* CANCELLED BOOKINGS TAB */}
+              <Tab eventKey="cancelled" title="Cancelled">
+                {renderBookingsTable(cancelledBookings, "cancelled")}
+              </Tab>
+
+              {/* PENDING REFUNDS TAB */}
+              <Tab
+                eventKey="pending-refunds"
+                title={`Pending Refunds ${pendingRefunds.length > 0 ? `(${pendingRefunds.length})` : ""}`}
+              >
+                {renderRefundsTable()}
+              </Tab>
+            </Tabs>
           </ComponentContainerCard>
         </Col>
       </Row>
@@ -439,18 +665,127 @@ const BookingEnquiriesPage: React.FC = () => {
                   {new Date(selectedBooking.bookingDate).toLocaleString()}
                 </p>
               </div>
-              <div className="col-md-6">
-                <strong>Balance Due Date:</strong>
-                <p className="mb-0">
-                  {formatDate(selectedBooking.balancePaymentDueDate)}
-                </p>
-              </div>
             </div>
           )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseModal}>
             Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Refund Processing Modal */}
+      <Modal
+        show={modalType === "refund"}
+        onHide={handleCloseModal}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Process Refund</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedRefund && (
+            <div className="row g-3">
+              {/* Refund Details */}
+              <div className="col-md-6">
+                <strong>Refund ID:</strong>
+                <p className="mb-0">{selectedRefund.refundId}</p>
+              </div>
+              <div className="col-md-6">
+                <strong>Booking ID:</strong>
+                <p className="mb-0">{selectedRefund.bookingId}</p>
+              </div>
+
+              <div className="col-md-6">
+                <strong>User:</strong>
+                <p className="mb-0">{selectedRefund.user?.name || "N/A"}</p>
+                <small className="text-muted">
+                  {selectedRefund.user?.email || ""}
+                </small>
+              </div>
+              <div className="col-md-6">
+                <strong>Tour:</strong>
+                <p className="mb-0">{selectedRefund.tourName || "N/A"}</p>
+              </div>
+
+              <div className="col-md-6">
+                <strong>Refund Amount:</strong>
+                <p className="mb-0 fs-5 text-primary">
+                  {formatPrice(selectedRefund.amount)}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <strong>Current Status:</strong>
+                <p className="mb-0">
+                  <span
+                    className={`badge ${getRefundStatusBadge(selectedRefund.status)}`}
+                  >
+                    {selectedRefund.status}
+                  </span>
+                </p>
+              </div>
+
+              <div className="col-12">
+                <strong>Reason:</strong>
+                <p className="mb-0">{selectedRefund.reason || "N/A"}</p>
+              </div>
+
+              <div className="col-md-6">
+                <strong>Payment ID:</strong>
+                <p className="mb-0">
+                  <small className="text-muted">
+                    {selectedRefund.paymentId || "N/A"}
+                  </small>
+                </p>
+              </div>
+              <div className="col-md-6">
+                <strong>Requested On:</strong>
+                <p className="mb-0">
+                  {formatDateTime(selectedRefund.requestedDate)}
+                </p>
+              </div>
+
+              {/* Action Form */}
+              <div className="col-12">
+                <hr />
+                <strong>Update Refund Status</strong>
+              </div>
+
+              <div className="col-12">
+                <Form.Group>
+                  <Form.Label>Status *</Form.Label>
+                  <Form.Select
+                    value={refundStatus}
+                    onChange={(e) => setRefundStatus(e.target.value as any)}
+                  >
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Completed">Completed</option>
+                  </Form.Select>
+                </Form.Group>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleUpdateRefund}
+            disabled={isUpdatingRefund}
+          >
+            {isUpdatingRefund ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" />
+                Processing...
+              </>
+            ) : (
+              "Update Refund"
+            )}
           </Button>
         </Modal.Footer>
       </Modal>

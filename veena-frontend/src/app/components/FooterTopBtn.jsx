@@ -4,6 +4,24 @@ import { X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+const city = [
+  {
+    id: 1,
+    cityName: "Europe, South East Asia, America",
+    url: "/tour-list",
+  },
+  {
+    id: 2,
+    cityName: "Australia, New Zealand, Africa",
+    url: "/tour-list",
+  },
+  {
+    id: 3,
+    cityName: "Japan, China, Korea, Taiwan",
+    url: "/tour-list",
+  },
+];
+
 const FooterTopBtn = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -172,9 +190,12 @@ const FooterTopBtn = () => {
               <span className="font-bold">⚡ Trending Group Tours</span>
             </p>
             <ul className="text-center text-blue-600 underline space-y-1 mt-2">
-              <li>Europe, South East Asia, America</li>
-              <li>Australia, New Zealand, Africa</li>
-              <li>Japan, China, Korea, Taiwan</li>
+              {city &&
+                city.map((city) => (
+                  <Link key={city.id} href={city.url}>
+                    <li>{city.cityName}</li>
+                  </Link>
+                ))}
             </ul>
             <p className="text-sm text-center mt-4">
               you're just a few clicks away from your next unforgettable

@@ -73,7 +73,7 @@ const Tourscards = () => {
 
         {/* Button */}
         <div className="flex justify-center mt-6">
-          <CustomBtn href="/tour-list">More Diwali Tours</CustomBtn>
+          <CustomBtn href="/tour-list">More Tours</CustomBtn>
         </div>
       </div>
     </section>

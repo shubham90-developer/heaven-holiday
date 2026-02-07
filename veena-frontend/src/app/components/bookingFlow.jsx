@@ -6,7 +6,6 @@ import TravellerDetailsForm from "./travellerDetailsForm";
 import BookingReview from "./bookingReview";
 import PaymentSection from "./paymentSection";
 import { FaFileInvoice } from "react-icons/fa";
-import PricingModal from "../pages/TourDetails/PricingModal";
 import Link from "next/link";
 import EmiModal from "../pages/TourDetails/EmiModal";
 import { useCreateBookingMutation } from "store/bookingApi/bookingApi";
@@ -357,7 +356,6 @@ const BookingFlow = ({ tourData }) => {
               )}
 
               <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                <PricingModal />
                 <Link
                   href="#cancellation-policy"
                   className="text-blue-700 underline"

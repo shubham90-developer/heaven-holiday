@@ -17,6 +17,9 @@ import {
   useGetUserBookingsQuery,
   useUpdateBookingTravelersMutation,
   useCancelBookingMutation,
+  useCreatePaymentOrderMutation,
+  useVerifyPaymentMutation,
+  useHandlePaymentFailureMutation,
 } from "store/bookingApi/bookingApi";
 import toast from "react-hot-toast";
 // ==================== EDIT BOOKING MODAL WITH ADD/REMOVE TRAVELERS ====================
@@ -58,10 +61,33 @@ const EditBookingModal = ({ isOpen, onClose, booking }) => {
   useEffect(() => {
     if (isSuccess) {
       toast.success("Booking updated successfully!");
+
+      // ADD THIS - Show pricing update info
+      if (booking?.pricing?.totalAmount && booking?.pricing?.pricePerPerson) {
+        const oldTotal = booking.pricing.totalAmount;
+        const oldTravelers = booking.travelerCount?.total || 0;
+        const newTravelers = formData.travelers.length;
+
+        if (newTravelers !== oldTravelers) {
+          const newTotal = newTravelers * booking.pricing.pricePerPerson;
+          const difference = newTotal - oldTotal;
+
+          if (difference > 0) {
+            toast.info(
+              `Price increased by ₹${difference.toLocaleString("en-IN")}. Please pay the additional amount.`,
+            );
+          } else if (difference < 0) {
+            toast.info(
+              `Refund of ₹${Math.abs(difference).toLocaleString("en-IN")} will be processed.`,
+            );
+          }
+        }
+      }
+
       reset();
       onClose();
     }
-  }, [isSuccess, onClose, reset]);
+  }, [isSuccess, onClose, reset, booking, formData.travelers.length]);
 
   const toggleTravelerForm = (index) => {
     if (openTravelerForms.includes(index)) {
@@ -756,6 +782,7 @@ const EditBookingModal = ({ isOpen, onClose, booking }) => {
 
                 {booking.pricing && (
                   <div className="border-t border-dashed pt-4 mb-4">
+                    {/* CURRENT TOTAL */}
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-sm font-medium text-black">
                         Current Total
@@ -766,6 +793,23 @@ const EditBookingModal = ({ isOpen, onClose, booking }) => {
                         </p>
                       </div>
                     </div>
+
+                    {/* NEW TOTAL IF TRAVELERS CHANGED - ADD THIS */}
+                    {travelerCounts.total !== booking.travelerCount?.total &&
+                      booking.pricing.pricePerPerson && (
+                        <div className="flex justify-between items-start mb-2 bg-yellow-50 p-2 rounded border border-yellow-200">
+                          <span className="text-sm font-medium text-black">
+                            New Total ({travelerCounts.total} travelers)
+                          </span>
+                          <p className="text-blue-600 font-semibold text-xl">
+                            ₹
+                            {(
+                              travelerCounts.total *
+                              booking.pricing.pricePerPerson
+                            ).toLocaleString("en-IN")}
+                          </p>
+                        </div>
+                      )}
 
                     {booking.pricing.paidAmount > 0 && (
                       <div className="flex justify-between items-center mb-2 text-sm">
@@ -994,6 +1038,9 @@ const MyBookingsCards = () => {
   const [selectedBookingForEdit, setSelectedBookingForEdit] = useState(null);
   const [selectedBookingForCancel, setSelectedBookingForCancel] =
     useState(null);
+  const [createPaymentOrder] = useCreatePaymentOrderMutation();
+  const [verifyPayment] = useVerifyPaymentMutation();
+  const [handlePaymentFailure] = useHandlePaymentFailureMutation();
   const userId = localStorage.getItem("userId");
 
   const {
@@ -1108,6 +1155,101 @@ const MyBookingsCards = () => {
   if (myBookingsError) {
     return <p>error</p>;
   }
+
+  const handlePayPending = async (booking) => {
+    const amount = booking.pricing.pendingAmount;
+    const bookingId = booking.bookingId;
+
+    try {
+      // Step 1: Create Razorpay order
+      const orderResponse = await createPaymentOrder({
+        bookingId,
+        amount,
+      }).unwrap();
+
+      if (!orderResponse.success) {
+        toast.error("Failed to create payment order");
+        return;
+      }
+
+      const { orderId, amount: orderAmount, keyId } = orderResponse.data;
+
+      // Step 2: Razorpay checkout options
+      const options = {
+        key: keyId,
+        amount: orderAmount,
+        currency: "INR",
+        name: "Heaven Holiday",
+        description: `Payment for Booking ${bookingId}`,
+        order_id: orderId,
+
+        handler: async function (response) {
+          try {
+            // Step 3: Verify payment
+            const verifyResponse = await verifyPayment({
+              bookingId,
+              paymentData: {
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                amount: orderAmount,
+              },
+            }).unwrap();
+
+            if (verifyResponse.success) {
+              toast.success("Payment successful!");
+            } else {
+              toast.error("Payment verification failed");
+            }
+          } catch (error) {
+            toast.error("Payment verification failed");
+          }
+        },
+
+        prefill: {
+          name: booking.leadTraveler?.name || "",
+          email: booking.leadTraveler?.email || "",
+          contact: booking.leadTraveler?.phone || "",
+        },
+
+        theme: {
+          color: "#dc2626", // red-600
+        },
+
+        modal: {
+          ondismiss: function () {
+            toast.info("Payment cancelled");
+          },
+        },
+      };
+
+      // Step 4: Open Razorpay
+      const razorpay = new window.Razorpay(options);
+
+      razorpay.on("payment.failed", async function (response) {
+        try {
+          await handlePaymentFailure({
+            bookingId,
+            failureData: {
+              razorpayOrderId: response.error.metadata.order_id,
+              error: {
+                description: response.error.description,
+              },
+            },
+          }).unwrap();
+        } catch (error) {
+          console.error("Failed to log payment failure:", error);
+        }
+
+        toast.error(`Payment Failed: ${response.error.description}`);
+      });
+
+      razorpay.open();
+    } catch (error) {
+      toast.error("Error processing payment");
+      console.error("Payment error:", error);
+    }
+  };
 
   return (
     <>
@@ -1358,22 +1500,34 @@ const MyBookingsCards = () => {
                         <div className="flex justify-between gap-2">
                           {booking.bookingStatus !== "Cancelled" &&
                             booking.bookingStatus !== "Completed" && (
-                              <button
-                                onClick={() => handleEditClick(booking)}
-                                className="flex-1 border border-blue-600 text-center font-bold text-blue-600 px-2 py-2 rounded-md text-sm hover:bg-blue-50 transition"
-                              >
-                                Edit
-                              </button>
-                            )}
+                              <>
+                                <button
+                                  onClick={() => handleEditClick(booking)}
+                                  className="flex-1 border border-blue-600 text-center font-bold text-blue-600 px-2 py-2 rounded-md text-sm hover:bg-blue-50 transition"
+                                >
+                                  Edit
+                                </button>
 
-                          {booking.bookingStatus !== "Cancelled" &&
-                            booking.bookingStatus !== "Completed" && (
-                              <button
-                                onClick={() => handleCancelClick(booking)}
-                                className="flex-1 bg-red-700 text-center text-white font-bold px-2 py-2 rounded-md text-sm hover:bg-red-800 transition"
-                              >
-                                Cancel Booking
-                              </button>
+                                {/* ADD THIS NEW BUTTON - PAY PENDING */}
+                                {booking.pricing?.pendingAmount > 0 && (
+                                  <button
+                                    onClick={() => handlePayPending(booking)}
+                                    className="flex-1 bg-green-600 text-center text-white font-bold px-2 py-2 rounded-md text-sm hover:bg-green-700 transition"
+                                  >
+                                    Pay ₹
+                                    {booking.pricing.pendingAmount.toLocaleString(
+                                      "en-IN",
+                                    )}
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => handleCancelClick(booking)}
+                                  className="flex-1 bg-red-700 text-center text-white font-bold px-2 py-2 rounded-md text-sm hover:bg-red-800 transition"
+                                >
+                                  Cancel Booking
+                                </button>
+                              </>
                             )}
 
                           {(booking.bookingStatus === "Completed" ||

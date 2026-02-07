@@ -301,6 +301,14 @@ export const getBookingsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });
+// ========== UPDATE REFUND STATUS SCHEMA ==========
+export const updateRefundStatusSchema = z.object({
+  status: z.enum(['Approved', 'Rejected', 'Completed'], {
+    message: 'Status must be Approved, Rejected, or Completed',
+  }),
+  remarks: z.string().optional(),
+  transactionId: z.string().optional(),
+});
 
 // ========== TYPES ==========
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;

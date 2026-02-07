@@ -64,6 +64,23 @@ export interface IPayment {
   razorpaySignature?: string;
 }
 
+// In bookingInterface.ts - ADD THIS
+
+export interface IRefund {
+  _id?: Types.ObjectId;
+  refundId: string;
+  amount: number;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+  paymentId?: string;
+  razorpayRefundId?: string;
+  reason: string;
+  requestedBy: Types.ObjectId;
+  approvedBy?: Types.ObjectId;
+  createdAt: Date;
+  processedAt?: Date;
+  remarks?: string;
+}
+
 // ========== MAIN BOOKING INTERFACE ==========
 export interface IBooking extends Document {
   // Identification
@@ -87,7 +104,7 @@ export interface IBooking extends Document {
   // Payment
   paymentStatus: 'Pending' | 'Advance Paid' | 'Fully Paid';
   payments: IPayment[];
-
+  refunds: IRefund[];
   // Status
   bookingStatus: 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled';
 

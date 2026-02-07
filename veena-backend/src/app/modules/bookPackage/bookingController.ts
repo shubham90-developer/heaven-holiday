@@ -3,7 +3,7 @@
 import { NextFunction, Response } from 'express';
 import { AuthRequest } from '../../middlewares/firebaseAuth';
 import { appError } from '../../errors/appError';
-
+import { Types } from 'mongoose';
 import { Booking } from './bookingModel';
 import { TourPackageCard } from '../tourPackage/tourPackageModel';
 import { User } from '../auth/auth.model';
@@ -11,11 +11,14 @@ import {
   createBookingSchema,
   addPaymentSchema,
   updateBookingTravelersSchema,
+  updateRefundStatusSchema,
 } from './bookingValidation';
 import {
   createRazorpayOrder,
   verifyRazorpaySignature,
 } from '../../config/razorpay';
+
+import { IRefund } from './bookingInterface';
 // Generate unique booking ID
 const generateBookingId = async (): Promise<string> => {
   const date = new Date();
@@ -77,6 +80,21 @@ export const createBooking = async (
     if (new Date(departure.date) < today) {
       return next(new appError('Cannot book past departure dates', 400));
     }
+    const departureDate = new Date(departure.date);
+    departureDate.setHours(0, 0, 0, 0);
+
+    const daysUntilDeparture = Math.ceil(
+      (departureDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (daysUntilDeparture < 15) {
+      return next(
+        new appError(
+          `Cannot create booking within 15 days of departure. This departure is in ${daysUntilDeparture} days.`,
+          400,
+        ),
+      );
+    }
 
     // Check seat availability
     const totalTravelers = validatedData.travelerCount.total;
@@ -100,12 +118,6 @@ export const createBooking = async (
         validatedData.selectedDeparture.departureId,
       bookingStatus: { $ne: 'Cancelled' },
     });
-
-    if (existingBooking) {
-      return next(
-        new appError('You already have a booking for this departure', 400),
-      );
-    }
 
     // Generate booking ID
     const bookingId = await generateBookingId();
@@ -212,6 +224,10 @@ export const getUserBookings = async (
           {
             path: 'states',
             select: 'cities',
+          },
+          {
+            path: 'galleryImages',
+            select: '... galleryImages',
           },
         ],
       })
@@ -449,20 +465,53 @@ export const cancelBooking = async (
 
     // Optional: Check cancellation deadline (e.g., 7 days before departure)
     const cancellationDeadline = new Date(departureDate);
-    cancellationDeadline.setDate(cancellationDeadline.getDate() - 7);
+    cancellationDeadline.setDate(cancellationDeadline.getDate() - 15);
 
     if (today > cancellationDeadline) {
       return next(
         new appError(
-          'Cancellation deadline has passed (7 days before departure). Please contact support for assistance.',
+          'Cancellation deadline has passed (15 days before departure). Please contact support for assistance.',
           400,
         ),
       );
     }
 
-    // Check if any payment has been made
     const hasPayment = booking.pricing.paidAmount > 0;
     const refundAmount = booking.pricing.paidAmount;
+
+    const alreadyRefunded = booking.refunds
+      .filter((r) => r.status !== 'Rejected')
+      .reduce((sum, r) => sum + r.amount, 0);
+
+    const remainingRefund = refundAmount - alreadyRefunded;
+
+    if (hasPayment) {
+      const alreadyRefunded = booking.refunds
+        .filter((r) => r.status !== 'Rejected')
+        .reduce((sum, r) => sum + r.amount, 0);
+
+      // Calculate remaining amount to refund
+      const remainingRefund = refundAmount - alreadyRefunded;
+
+      // Only create refund if there's amount remaining
+      if (remainingRefund > 0) {
+        const successfulPayment = booking.payments.find(
+          (p) => p.paymentStatus === 'Success',
+        );
+
+        const refundRequest: Partial<IRefund> = {
+          refundId: `REF${Date.now()}`,
+          amount: remainingRefund,
+          status: 'Pending',
+          paymentId: successfulPayment?.razorpayPaymentId || 'N/A',
+          reason: 'Full booking cancellation by user',
+          requestedBy: user._id as Types.ObjectId,
+          createdAt: new Date(),
+        };
+
+        booking.refunds.push(refundRequest as IRefund);
+      }
+    }
 
     // Update booking status to Cancelled
     booking.bookingStatus = 'Cancelled';
@@ -500,18 +549,25 @@ export const cancelBooking = async (
     }
 
     // Prepare response
+    // Prepare response
     const responseData = {
       bookingId: booking.bookingId,
       status: booking.bookingStatus,
       seatsRestored: booking.travelerCount.total,
-      refundInfo: hasPayment
-        ? {
-            refundAmount,
-            refundStatus: 'Pending',
-            message:
-              'Refund will be processed within 7-10 business days according to our cancellation policy.',
-          }
-        : null,
+      refundInfo:
+        hasPayment && remainingRefund > 0
+          ? {
+              refundId: booking.refunds[booking.refunds.length - 1]?.refundId,
+              refundAmount: remainingRefund,
+              refundStatus: 'Pending',
+              message:
+                'Refund request created. Admin will process it within 7-10 business days.',
+            }
+          : hasPayment && remainingRefund === 0
+            ? {
+                message: 'All payments already refunded.',
+              }
+            : null,
     };
 
     res.json({
@@ -582,12 +638,12 @@ export const updateBookingTravelers = async (
 
     // Optional: Check update deadline (e.g., 3 days before departure)
     const updateDeadline = new Date(departureDate);
-    updateDeadline.setDate(updateDeadline.getDate() - 3);
+    updateDeadline.setDate(updateDeadline.getDate() - 15);
 
     if (today > updateDeadline) {
       return next(
         new appError(
-          'Update deadline has passed (3 days before departure). Please contact support for assistance.',
+          'Update deadline has passed (15 days before departure). Please contact support for assistance.',
           400,
         ),
       );
@@ -725,17 +781,36 @@ export const updateBookingTravelers = async (
     };
 
     // Update pricing if changed
+    // Update pricing if changed
     if (pricingChanged) {
       booking.pricing.totalAmount = newTotalAmount;
 
-      // Recalculate pending amount (total - already paid)
-      booking.pricing.pendingAmount =
-        newTotalAmount - booking.pricing.paidAmount;
+      booking.updatePaymentStatus();
+      // ========== CREATE PARTIAL REFUND ==========
+      if (newTotalAmount < oldTotalAmount && booking.pricing.paidAmount > 0) {
+        const refundAmount = oldTotalAmount - newTotalAmount;
+        const removedTravelers = oldTotal - newTotal;
+
+        const successfulPayment = booking.payments.find(
+          (p) => p.paymentStatus === 'Success',
+        );
+
+        const refundRequest: Partial<IRefund> = {
+          refundId: `REF${Date.now()}`,
+          amount: refundAmount,
+          status: 'Pending',
+          paymentId: successfulPayment?.razorpayPaymentId || 'N/A',
+          reason: `Partial refund: ${removedTravelers} traveler(s) removed (${oldTotal} → ${newTotal})`,
+          requestedBy: user._id as Types.ObjectId,
+          createdAt: new Date(),
+        };
+
+        booking.refunds.push(refundRequest as IRefund);
+      }
 
       // If pending amount is negative (user overpaid), handle it
       if (booking.pricing.pendingAmount < 0) {
         booking.pricing.pendingAmount = 0;
-        // You might want to add logic here for refund processing
       }
     }
     await booking.save();
@@ -748,6 +823,7 @@ export const updateBookingTravelers = async (
       .populate('user', 'name email phone')
       .populate('tourPackage', 'title subtitle days nights');
 
+    // Prepare response with detailed information
     // Prepare response with detailed information
     const responseData = {
       booking: updatedBooking,
@@ -773,6 +849,15 @@ export const updateBookingTravelers = async (
               pendingAmount: booking.pricing.pendingAmount,
             }
           : null,
+        refundInfo:
+          pricingChanged && newTotalAmount < oldTotalAmount
+            ? {
+                refundId: booking.refunds[booking.refunds.length - 1]?.refundId,
+                refundAmount: oldTotalAmount - newTotalAmount,
+                refundStatus: 'Pending',
+                message: 'Refund request created for removed travelers.',
+              }
+            : null,
         leadTraveler: booking.leadTraveler,
       },
     };
@@ -953,6 +1038,21 @@ export const createPaymentOrder = async (
     if (!amount || amount <= 0) {
       return next(new appError('Invalid payment amount', 400));
     }
+    const isFirstPayment =
+      booking.payments.filter((p) => p.paymentStatus === 'Success').length ===
+      0;
+
+    if (isFirstPayment) {
+      const minimumRequired = booking.pricing.totalAmount * 0.5; // 50%
+      if (amount < minimumRequired) {
+        return next(
+          new appError(
+            `First payment must be at least 50% (₹${minimumRequired.toLocaleString('en-IN')})`,
+            400,
+          ),
+        );
+      }
+    }
 
     if (amount > booking.pricing.pendingAmount) {
       return next(
@@ -1118,6 +1218,163 @@ export const handlePaymentFailure = async (
       data: {
         bookingId: booking.bookingId,
         error: error?.description || 'Payment was not successful',
+      },
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ========== ADMIN: GET ALL PENDING REFUNDS ==========
+export const getAllPendingRefunds = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { status, page = 1, limit = 50 } = req.query;
+
+    // Build query
+    const query: any = {};
+
+    if (status) {
+      query['refunds.status'] = status;
+    } else {
+      query['refunds.status'] = 'Pending';
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Find bookings with refunds
+    const bookings = await Booking.find(query)
+      .populate('user', 'name email phone')
+      .populate('tourPackage', 'title')
+      .select('bookingId user tourPackage refunds pricing createdAt')
+      .sort({ 'refunds.createdAt': -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    // Format response
+    // Format response
+    const refundRequests = bookings.flatMap((booking) =>
+      booking.refunds
+        .filter((refund) => !status || refund.status === status)
+        .map((refund) => ({
+          bookingId: booking.bookingId,
+          refundId: refund.refundId,
+          user: {
+            name: (booking.user as any).name,
+            email: (booking.user as any).email,
+            phone: (booking.user as any).phone,
+          },
+          tourName: (booking.tourPackage as any).title,
+          amount: refund.amount,
+          status: refund.status,
+          reason: refund.reason,
+          paymentId: refund.paymentId,
+          requestedDate: refund.createdAt,
+          processedDate: refund.processedAt,
+          remarks: refund.remarks,
+        })),
+    );
+
+    const total = refundRequests.length;
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: 'Refund requests retrieved successfully',
+      data: {
+        refunds: refundRequests,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages: Math.ceil(total / Number(limit)),
+        },
+      },
+    });
+    return;
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateRefundStatus = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { bookingId, refundId } = req.params;
+
+    const validatedData = updateRefundStatusSchema.parse(req.body);
+    const { status, remarks, transactionId } = validatedData;
+    // Validate status
+    const validStatuses: Array<IRefund['status']> = [
+      'Approved',
+      'Rejected',
+      'Completed',
+    ];
+    if (!validStatuses.includes(status)) {
+      return next(
+        new appError(
+          'Invalid status. Must be Approved, Rejected, or Completed',
+          400,
+        ),
+      );
+    }
+
+    // Find booking
+    const booking = await Booking.findOne({ bookingId })
+      .populate('user', 'name email phone')
+      .populate('tourPackage', 'title');
+
+    if (!booking) {
+      return next(new appError('Booking not found', 404));
+    }
+
+    // Find specific refund
+    const refund = booking.refunds.find((r) => r.refundId === refundId);
+
+    if (!refund) {
+      return next(new appError('Refund not found', 404));
+    }
+
+    // Check if already processed
+    if (refund.status !== 'Pending') {
+      return next(
+        new appError(
+          `Refund already processed with status: ${refund.status}`,
+          400,
+        ),
+      );
+    }
+
+    // Update refund
+    refund.status = status;
+    refund.processedAt = new Date();
+    refund.remarks = remarks || `Refund ${status.toLowerCase()} by admin`;
+
+    if (transactionId) {
+      refund.razorpayRefundId = transactionId;
+    }
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: `Refund ${status.toLowerCase()} successfully`,
+      data: {
+        bookingId: booking.bookingId,
+        refundId: refund.refundId,
+        status: refund.status,
+        amount: refund.amount,
+        processedAt: refund.processedAt,
+        user: booking.user,
+        tourName: (booking.tourPackage as any).title,
       },
     });
     return;

@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import TourActions from "./TourActions";
-import PricingModal from "./PricingModal";
 import TourGallery from "./TourGallery";
 import DepartureBooking from "./DepartureBooking";
 import StickyNavbar from "./StickyNavbar";
@@ -41,13 +40,19 @@ import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
 import BookingStepperModal from "@/app/components/bookingModals";
 import { useState } from "react";
 import { useGetTourReviewQuery } from "store/reviewsApi/reviewsApi";
+import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
 const TourDetails = () => {
   const breadcrumbItems = [
     { label: "Home", href: "/" },
     { label: "Tours", href: "/tours" },
     { label: "Search Holiday Package", href: null },
   ];
-
+  const [formData, setFormData] = useState({
+    name: "",
+    mono: "",
+  });
+  const [createEnquiry, { isLoading: isSubmitting }] =
+    useCreateEnquiryMutation();
   const { id: packageId } = useParams();
   const {
     data: tourPackage,
@@ -131,6 +136,35 @@ const TourDetails = () => {
     // Open booking modal
     setIsBookingModalOpen(true);
   };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.name || !formData.mono) {
+      alert("Please fill all fields!");
+      return;
+    }
+
+    if (!/^[0-9]{10}$/.test(formData.mono)) {
+      alert("Mobile number must be exactly 10 digits!");
+      return;
+    }
+
+    try {
+      await createEnquiry({
+        name: formData.name,
+        mono: formData.mono,
+        destinations: "-",
+        status: "active",
+      }).unwrap();
+
+      alert("Request submitted successfully! We will call you back soon.");
+      setFormData({ name: "", mono: "" });
+    } catch (error) {
+      alert(
+        error?.data?.message || "Failed to submit request. Please try again.",
+      );
+    }
+  };
   return (
     <>
       <Breadcrumb items={breadcrumbItems} />
@@ -173,6 +207,7 @@ const TourDetails = () => {
                     .map((_, i) => (
                       <FaStar key={i} className="text-sm" />
                     ))}
+
                   <span className="ml-2 text-xs sm:text-sm text-gray-600">
                     {Activereviews.length || ""} Reviews
                   </span>
@@ -214,20 +249,41 @@ const TourDetails = () => {
                 <h3 className="text-sm font-semibold mb-3">
                   Want us to call you?
                 </h3>
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  className="w-full border border-gray-400 p-3 text-xs rounded-xl mb-3"
-                />
-                <input
-                  type="text"
-                  placeholder="Mobile Number"
-                  className="w-full border border-gray-400 text-xs p-3 rounded-xl mb-3"
-                />
-                <button className="bg-red-700 w-full py-2 text-sm rounded-lg text-white font-semibold hover:bg-red-500 flex items-center justify-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  Request Call Back
-                </button>
+                <form onSubmit={handleSubmit}>
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full border rounded-xl p-2 py-3 text-xs mb-2 border-gray-300"
+                    required
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Mobile Number"
+                    value={formData.mono}
+                    onChange={(e) =>
+                      setFormData({ ...formData, mono: e.target.value })
+                    }
+                    pattern="[0-9]{10}"
+                    maxLength={10}
+                    className="w-full border rounded-xl p-2 py-3 text-xs mb-2 border-gray-300"
+                    required
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full cursor-pointer bg-red-700 hover:bg-red-500 text-white py-2 rounded font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Phone size={16} className="text-white" />
+                    <span>
+                      {isSubmitting ? "Submitting..." : "Request Call Back"}
+                    </span>
+                  </button>
+                </form>
               </div>
             </div>
 
@@ -331,15 +387,14 @@ const TourDetails = () => {
               </div>
 
               {/* EMI */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 rounded-md bg-gray-600 text-xs mt-2">
+              {/* <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 rounded-md bg-gray-600 text-xs mt-2">
                 <span className="text-white text-center sm:text-left">
                   EMI start at{" "}
                   <span className="font-semibold underline">
                     ₹{emiAmount.toLocaleString("en-IN")}/mo
                   </span>
                 </span>
-                <PricingModal />
-              </div>
+              </div> */}
 
               {/* Tour Includes */}
               <div className="mt-4">
@@ -376,7 +431,7 @@ const TourDetails = () => {
             </div>
 
             {/* Bottom Actions */}
-            <TourActions />
+            <TourActions packageId={tourData._id} />
           </div>
         </div>
       </section>
@@ -398,9 +453,9 @@ const TourDetails = () => {
               <CancellationPolicy tourData={tourData} />
               <Upgrades />
             </div>
-            <div className="lg:col-span-1">
+            {/* <div className="lg:col-span-1">
               <RightMap />
-            </div>
+            </div> */}
           </div>
         </div>
       </section>

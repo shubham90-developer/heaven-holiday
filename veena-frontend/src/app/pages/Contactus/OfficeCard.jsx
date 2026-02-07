@@ -61,9 +61,13 @@ const OfficeCard = () => {
               )}
             </div>
             <div className="flex gap-2">
-              <button className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200 cursor-pointer">
+              <Link
+                href="https://maps.app.goo.gl/tSDNvytmsdvB8YmJA"
+                target="_blank"
+                className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200 cursor-pointer"
+              >
                 <MapPin size={16} className="text-gray-600" />
-              </button>
+              </Link>
               <button
                 onClick={() => setSelectedOffice(office)}
                 className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200 cursor-pointer"

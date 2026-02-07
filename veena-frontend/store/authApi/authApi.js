@@ -98,7 +98,7 @@ export const authApi = createApi({
     // Get User Profile
     getProfile: builder.query({
       query: () => "/profile",
-      providesTags: ["Profile"],
+      providesTags: ["Profile", "Wishlist"],
     }),
 
     // Update Profile (includes profile image)

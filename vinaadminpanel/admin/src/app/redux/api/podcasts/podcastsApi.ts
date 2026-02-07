@@ -69,11 +69,23 @@ export const podcastsApi = createApi({
     }),
 
     addEpisode: builder.mutation({
-      query: ({ podcastId, ...data }) => ({
-        url: `/${podcastId}/episodes`,
-        method: "POST",
-        body: data,
-      }),
+      query: ({ podcastId, ...data }) => {
+        const formData = new FormData();
+        if (data.title) formData.append("title", data.title);
+        if (data.duration) formData.append("duration", data.duration);
+        if (data.date) formData.append("date", data.date);
+        if (data.audioUrl) formData.append("audioUrl", data.audioUrl);
+        if (data.audio) formData.append("audio", data.audio); // if uploading file
+        if (data.status) formData.append("status", data.status);
+        if (data.order !== undefined)
+          formData.append("order", data.order.toString());
+
+        return {
+          url: `/${podcastId}/episodes`,
+          method: "POST",
+          body: formData,
+        };
+      },
       invalidatesTags: ["Episodes", "Podcasts"],
     }),
 

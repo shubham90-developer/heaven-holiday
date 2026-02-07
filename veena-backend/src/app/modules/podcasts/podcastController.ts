@@ -234,12 +234,18 @@ export const addEpisode = async (
 ) => {
   try {
     const { id } = req.params;
-    const { title, date, duration, audioUrl, status, order } = req.body;
+    const { title, date, duration, status, order } = req.body;
 
     const podcast = await Podcast.findById(id);
     if (!podcast) {
       next(new appError('Podcast not found', 404));
       return;
+    }
+
+    let audioUrl = req.body.audioUrl;
+
+    if (req.file) {
+      audioUrl = req.file.path;
     }
 
     const validated = createEpisodeSchema.parse({
@@ -268,6 +274,14 @@ export const addEpisode = async (
     });
     return;
   } catch (error) {
+    if (req.file?.path) {
+      const publicId = req.file.path.split('/').pop()?.split('.')[0];
+      if (publicId) {
+        await cloudinary.uploader.destroy(`restaurent-podcasts/${publicId}`, {
+          resource_type: 'video', // Audio files are stored as 'video' type in Cloudinary
+        });
+      }
+    }
     next(error);
   }
 };

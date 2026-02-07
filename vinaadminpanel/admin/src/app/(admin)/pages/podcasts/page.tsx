@@ -83,7 +83,7 @@ const PodcastsPage = () => {
   const [podcastCoverPreview, setPodcastCoverPreview] = useState("");
   const [existingCoverUrl, setExistingCoverUrl] = useState("");
   const [podcastStatus, setPodcastStatus] = useState("active");
-
+  const [episodeAudio, setEpisodeAudio] = useState<File | null>(null);
   // Episode state
   const [selectedPodcastId, setSelectedPodcastId] = useState<string | null>(
     null,
@@ -282,50 +282,39 @@ const PodcastsPage = () => {
       return;
     }
 
-    if (!selectedPodcastId) {
-      showAlert("Podcast ID is missing!", "danger");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append("title", episodeTitle);
+      formData.append("date", episodeDate);
+      formData.append("duration", episodeDuration);
+      formData.append("status", episodeStatus);
+
+      if (episodeAudio) {
+        formData.append("audio", episodeAudio); // ✅ Add audio file
+      }
+
       if (isEditMode && episodeId) {
         await updateEpisode({
           podcastId: selectedPodcastId,
           episodeId: episodeId,
-          title: episodeTitle,
-          date: episodeDate,
-          duration: episodeDuration,
-          audioUrl: episodeAudioUrl,
-          status: episodeStatus,
+          data: formData,
         }).unwrap();
-        showAlert("Episode updated successfully!", "success");
       } else {
         await addEpisode({
           podcastId: selectedPodcastId,
           title: episodeTitle,
           date: episodeDate,
           duration: episodeDuration,
-          audioUrl: episodeAudioUrl,
           status: episodeStatus,
+          audio: episodeAudio,
         }).unwrap();
-        showAlert("Episode added successfully!", "success");
       }
 
-      // Go back to episodes list
+      showAlert("Episode saved successfully!", "success");
       setModalType("episodes-list");
-      setEpisodeId(null);
-      setEpisodeTitle("");
-      setEpisodeDate("");
-      setEpisodeDuration("");
-      setEpisodeAudioUrl("");
-      setEpisodeStatus("active");
     } catch (err: any) {
-      console.error("Error:", err);
-      showAlert(
-        err?.data?.message || `${isEditMode ? "Update" : "Creation"} failed!`,
-        "danger",
-      );
+      showAlert(err?.data?.message || "Failed!", "danger");
     } finally {
       setIsSubmitting(false);
     }
@@ -561,12 +550,16 @@ const PodcastsPage = () => {
           </Row>
 
           <Form.Group className="mb-3">
-            <Form.Label>Audio URL</Form.Label>
-            <Form.Control
-              type="url"
-              value={episodeAudioUrl}
-              onChange={(e) => setEpisodeAudioUrl(e.target.value)}
-              placeholder="https://example.com/audio.mp3"
+            <Form.Label>Audio File *</Form.Label>
+            <FileUploader
+              onFileUpload={(files) => {
+                if (files && files.length > 0) {
+                  setEpisodeAudio(files[0]);
+                }
+              }}
+              icon="ri:upload-cloud-2-line"
+              text="Drop audio file here or click to upload."
+              extraText="(Supported: MP3, WAV, M4A, AAC)"
             />
           </Form.Group>
 

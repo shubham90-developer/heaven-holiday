@@ -198,40 +198,6 @@ const MyProfile = () => {
           </div>
         )}
       </div>
-
-      {/* Co-Travellers Section */}
-      <div className="border border-gray-200 bg-white rounded-lg">
-        <button
-          className="flex justify-between items-center w-full px-6 py-4 text-black cursor-pointer"
-          onClick={() => setOpenTravellers(!openTravellers)}
-        >
-          <span className="font-semibold">Co-Travellers</span>
-          <FaChevronDown
-            className={`transform transition ${
-              openTravellers ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-
-        {openTravellers && (
-          <div className="p-6 text-center border-t">
-            <blockquote className="italic text-gray-600 mb-4">
-              "Travelling in the company of those we love is home in motion."
-              <br /> <span className="font-medium">-Leigh Hunt</span>
-            </blockquote>
-
-            <img
-              src="/assets/img/otp.svg"
-              alt="No Co-Travellers"
-              className="mx-auto mb-4 h-24"
-            />
-
-            <p className="text-sm text-gray-700">
-              You have 0 co-travellers. Make memories with your loved ones.
-            </p>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

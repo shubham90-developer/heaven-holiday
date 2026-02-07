@@ -11,6 +11,8 @@ import {
   FaCamera,
   FaCheck,
   FaEnvelope,
+  FaQq,
+  FaQuestion,
 } from "react-icons/fa";
 import {
   useGetProfileQuery,
@@ -60,13 +62,14 @@ const Sidebar = () => {
   const menuItems = [
     { icon: <FaUser />, label: "My Account", url: "/account" },
     { icon: <FaBook />, label: "My Booking", url: "/account/my-booking" },
-    {
-      icon: <FaPlane />,
-      label: "My Holiday Cart",
-      url: "/account/my-holiday-cart",
-    },
+    // {
+    //   icon: <FaPlane />,
+    //   label: "My Holiday Cart",
+    //   url: "/account/my-holiday-cart",
+    // },
     { icon: <FaHeart />, label: "Wishlist", url: "/account/wishlist" },
     { icon: <FaGift />, label: "Gift Cards", url: "/account/gift-cards" },
+    { icon: <FaQuestion />, label: "Faq's", url: "/faq" },
   ];
 
   if (isLoading) {

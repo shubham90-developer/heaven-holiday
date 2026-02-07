@@ -73,7 +73,7 @@ const BookingStepperModal = ({
           : selectedDeparture?.joiningPrice || tourData?.baseJoiningPrice;
 
       const totalAmount = basePrice * formData.travelerCount.total;
-      const advanceAmount = Math.ceil(totalAmount * 0.25);
+      const advanceAmount = Math.ceil(totalAmount * 0.5);
 
       setFormData((prev) => ({
         ...prev,
@@ -1272,7 +1272,7 @@ const BookingStepperModal = ({
                         </span>
                       </div>
                       <div className="flex justify-between text-orange-600">
-                        <span>Advance Amount (25%):</span>
+                        <span>Advance Amount (50%):</span>
                         <span className="font-semibold">
                           ₹
                           {formData.pricing.advanceAmount.toLocaleString(
@@ -1341,7 +1341,7 @@ const BookingStepperModal = ({
                             onChange={(e) => setPaymentType(e.target.value)}
                             className="mr-3"
                           />
-                          <span className="font-medium">Pay Advance (25%)</span>
+                          <span className="font-medium">Pay Advance (50%)</span>
                           <p className="text-sm text-gray-600 ml-6">
                             Pay ₹
                             {formData.pricing.advanceAmount.toLocaleString(
@@ -1494,7 +1494,7 @@ const BookingStepperModal = ({
                   </div>
 
                   <div className="flex justify-between items-center mb-2 text-sm">
-                    <span className="text-gray-700">Advance (25%)</span>
+                    <span className="text-gray-700">Advance (50%)</span>
                     <span className="font-semibold">
                       ₹{formData.pricing.advanceAmount.toLocaleString("en-IN")}
                     </span>

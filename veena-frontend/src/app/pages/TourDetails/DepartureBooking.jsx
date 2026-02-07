@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import DepartureSelector from "./DepartureSelector";
 import { FaFileInvoice } from "react-icons/fa";
-import PricingModal from "./PricingModal";
 import Link from "next/link";
 import EmiModal from "./EmiModal";
 import BookingStepperModal from "@/app/components/bookingModals";
@@ -148,28 +147,27 @@ const DepartureBooking = ({ tourData, onDepartureSelect }) => {
                   </div>
                 </div>
 
-                <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                  <PricingModal />
+                {/* <div className="mt-2 flex flex-wrap gap-3 text-xs">
                   <Link
                     href="#cancellation-policy"
                     className="text-blue-700 underline"
                   >
                     Cancellation Policy
                   </Link>
-                </div>
+                </div> */}
               </div>
 
               {/* EMI */}
-              <div className="mb-5">
+              {/* <div className="mb-5">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-700">
                     EMI Available
                   </span>
                   <span className="font-semibold">{formattedEmi}</span>
                 </div>
-                {/* emi modal */}
+            
                 <EmiModal />
-              </div>
+              </div> */}
 
               {/* Contact Info */}
               <div className="border-t border-dashed pt-4 mb-4 text-sm text-gray-700">
