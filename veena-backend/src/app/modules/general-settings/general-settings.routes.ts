@@ -129,7 +129,6 @@ router.get('/', getGeneralSettings);
  */
 router.put(
   '/',
-  auth('admin'),
   upload.fields([
     { name: 'favicon', maxCount: 1 },
     { name: 'logo', maxCount: 1 },
