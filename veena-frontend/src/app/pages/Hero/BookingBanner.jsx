@@ -9,11 +9,37 @@ import Link from "next/link";
 import Image from "next/image";
 import { useGetTourPackageQuery } from "store/toursManagement/toursPackagesApi";
 
+//Booking Banner Loading Skeleton
+const BookingBannerSkeleton = () => {
+  return (
+    <section className="py-5">
+      <div className="max-w-6xl mx-auto relative px-2">
+        <div className="relative w-full h-[300px] sm:h-[500px] md:h-[380px] lg:h-[450px] rounded-lg overflow-hidden bg-gray-200 animate-pulse">
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" />
+
+          {/* Left content skeleton */}
+          <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-6 md:px-12 max-w-lg space-y-3">
+            <div className="h-3 w-24 bg-gray-300 rounded" />
+            <div className="h-6 w-56 bg-gray-300 rounded" />
+            <div className="h-4 w-48 bg-gray-300 rounded" />
+            <div className="h-4 w-40 bg-gray-300 rounded" />
+            <div className="h-4 w-52 bg-gray-300 rounded" />
+            <div className="h-8 w-32 bg-gray-300 rounded mt-4" />
+            <div className="h-3 w-16 bg-gray-300 rounded" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+
 const BookingBanner = () => {
   const { data, isLoading, error } = useGetTourPackageQuery();
 
   if (isLoading) {
-    return <p>loading</p>;
+    return <BookingBannerSkeleton />;
   }
 
   if (error) {

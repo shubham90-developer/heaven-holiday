@@ -4,6 +4,7 @@ import { Phone } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useCreateEnquiryMutation } from "../../../../store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
 
 const TourStatus = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +26,16 @@ const TourStatus = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!formData.name || !formData.mono || !formData.email) {
+    toast.error("Please fill all required fields");
+    return;
+  }
+
+  if (!/^[0-9]{10}$/.test(formData.mono)) {
+    toast.error("Mobile number must be exactly 10 digits");
+    return;
+  }
+
     try {
       const submitData = {
         name: formData.name,
@@ -36,6 +47,7 @@ const TourStatus = () => {
       };
 
       await createEnquiry(submitData).unwrap();
+      toast.success("Enquiry submitted successfully! 📞");
 
       // Reset form
       setFormData({
@@ -47,7 +59,8 @@ const TourStatus = () => {
       alert("Enquiry submitted successfully!");
     } catch (error) {
       console.error("Failed to submit enquiry:", error);
-      alert(error?.data?.message || "Failed to submit. Please try again.");
+      toast.error(
+      error?.data?.message || "Failed to submit enquiry. Please try again.");
     }
   };
 

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useCreateEnquiryMutation } from "../../../../store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
 
 const EnquiryForm = () => {
   const [createEnquiry, { isLoading }] = useCreateEnquiryMutation();
@@ -15,12 +16,12 @@ const EnquiryForm = () => {
     e.preventDefault();
 
     if (!formData.name || !formData.mono || !formData.destinations) {
-      alert("Please fill all fields!");
+      toast.error("Please fill all required fields");
       return;
     }
 
     if (!/^[0-9]{10}$/.test(formData.mono)) {
-      alert("Mobile number must be exactly 10 digits!");
+      toast.error("Mobile number must be exactly 10 digits");
       return;
     }
 
@@ -32,11 +33,13 @@ const EnquiryForm = () => {
         status: "active",
       }).unwrap();
 
-      alert("Enquiry submitted successfully! We will get back to you soon.");
+      toast.success(
+        "Enquiry submitted successfully! We’ll contact you soon 📞");
       setFormData({ name: "", mono: "", destinations: "" });
     } catch (error) {
-      alert(
+      toast.error(
         error?.data?.message || "Failed to submit enquiry. Please try again.",
+        { id: toastId }
       );
     }
   };

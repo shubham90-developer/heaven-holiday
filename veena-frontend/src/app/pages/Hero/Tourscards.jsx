@@ -6,6 +6,39 @@ import Link from "next/link";
 import React from "react";
 import { useGetCategoriesQuery } from "store/toursManagement/toursPackagesApi";
 
+//Tours Cards Loading Skeleton
+const ToursCardsSkeleton = () => {
+  return (
+    <section className="py-5 bg-gray-100">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-6">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse"
+            >
+              {/* Image Skeleton */}
+              <div className="relative w-full h-28 bg-gray-300" />
+
+              {/* Content Skeleton */}
+              <div className="p-2 space-y-2">
+                <div className="h-3 w-3/4 bg-gray-300 rounded" />
+                <div className="h-3 w-1/2 bg-gray-300 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Button Skeleton */}
+        <div className="flex justify-center mt-6">
+          <div className="h-10 w-32 bg-gray-300 rounded animate-pulse" />
+        </div>
+      </div>
+    </section>
+  );
+};
+
+
 const Tourscards = () => {
   const {
     data: categories,
@@ -13,7 +46,7 @@ const Tourscards = () => {
     error: categoriesError,
   } = useGetCategoriesQuery();
   if (categoriesLoading) {
-    return <p>loading</p>;
+    return <ToursCardsSkeleton />
   }
   if (categoriesError) {
     return <p>error</p>;

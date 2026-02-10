@@ -1,6 +1,7 @@
 "use client";
 import { useCreateEnquiryMutation } from "../../../../store/enquiryApi/enquiryApi";
 import React, { useState } from "react";
+import toast from "react-hot-toast";
 
 const BookForm = () => {
   const [formData, setFormData] = useState({
@@ -45,10 +46,13 @@ const BookForm = () => {
         modeOfCommunication: "call",
       });
 
-      alert("Your holiday booking request has been submitted successfully!");
+      toast.success("Your holiday booking request has been submitted!");
+
     } catch (error) {
       console.error("Failed to submit booking:", error);
-      alert(error?.data?.message || "Failed to submit. Please try again.");
+      toast.error(
+        error?.data?.message || "Failed to submit. Please try again."
+      );
     }
   };
 

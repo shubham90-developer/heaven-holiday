@@ -1,15 +1,30 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useGetProfileQuery } from "store/authApi/authApi";
 import { useGetUserBookingsQuery } from "store/bookingApi/bookingApi";
 
 const TravalPlanCards = () => {
-  const token = localStorage.getItem("authToken");
-  if (!token) {
+  // const token = localStorage.getItem("authToken");
+  // if (!token) {
+  //   return null;
+  // }
+
+  const [token, setToken] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const storedToken = localStorage.getItem("authToken");
+    setToken(storedToken);
+  }, []);
+
+  // Prevent rendering until client is mounted
+  if (!mounted || !token) {
     return null;
   }
+  
   const {
     data: profile,
     isLoading: profileLoading,

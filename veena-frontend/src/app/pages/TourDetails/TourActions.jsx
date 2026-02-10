@@ -7,6 +7,7 @@ import { FaFacebook, FaWhatsapp } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { useAddToWishlistMutation } from "store/authApi/authApi";
 import { auth } from "@/app/config/firebase";
+import toast from "react-hot-toast";
 
 const TourActions = ({ packageId }) => {
   const router = useRouter();
@@ -24,14 +25,14 @@ const TourActions = ({ packageId }) => {
       const token = localStorage.getItem("authToken");
 
       if (!token && !auth.currentUser) {
-        alert("Please login first");
+        toast.error("Please login to add items to wishlist");
         router.push("/login");
         return;
       }
 
       // Backend gets Firebase UID from token automatically
       await addToWishlist({ packageId }).unwrap();
-      alert("Package added to wishlist successfully!");
+      toast.success("Package added to wishlist ❤️");
 
       // Redirect to wishlist page
       router.push("/account/wishlist");
@@ -41,12 +42,49 @@ const TourActions = ({ packageId }) => {
       console.log("Error message:", error?.data?.message);
 
       if (error?.data?.message) {
-        alert(error.data.message);
+        toast.error(error.data.message);
       } else if (error?.message) {
-        alert(error.message);
+        toast.error(error.message);
       } else {
-        alert("Failed to add to wishlist");
+        toast.error(
+          error?.data?.message || "Failed to add to wishlist");
       }
+    }
+  };
+
+  /* ---------------- Share Logic ---------------- */
+  const tourUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/tour/${packageId}`
+      : "";
+
+  const shareMessage = `Check out this amazing tour! 🌍✨\n${tourUrl}`;
+
+  const handleWhatsAppShare = () => {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(shareMessage)}`,
+      "_blank"
+    );
+    closeModal();
+  };
+
+  const handleFacebookShare = () => {
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+        tourUrl
+      )}`,
+      "_blank"
+    );
+    closeModal();
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(tourUrl);
+      toast.success("Link copied to clipboard 📋");
+      closeModal();
+    } catch {
+      toast.error("Failed to copy link");
     }
   };
 
@@ -195,17 +233,26 @@ const TourActions = ({ packageId }) => {
               </button>
               <h2 className="text-lg font-semibold mb-4">Share This Tour</h2>
               <div className="flex flex-col gap-2">
-                <button className="flex items-center gap-2 border px-3 py-2 rounded hover:bg-gray-100 text-green-600 text-xs cursor-pointer">
+                <button
+                  onClick={handleWhatsAppShare}
+                  className="flex items-center gap-2 border px-3 py-2 rounded text-green-600 text-xs"
+                >
                   <FaWhatsapp className="w-4 h-4" />
                   Share via WhatsApp
                 </button>
 
-                <button className="flex items-center gap-2 border px-3 py-2 rounded hover:bg-gray-100 text-blue-600 text-xs cursor-pointer">
+                <button
+                  onClick={handleFacebookShare}
+                  className="flex items-center gap-2 border px-3 py-2 rounded text-blue-600 text-xs"
+                >
                   <FaFacebook className="w-4 h-4" />
                   Share via Facebook
                 </button>
 
-                <button className="flex items-center gap-2 border px-3 py-2 rounded hover:bg-gray-100 text-gray-700 text-xs cursor-pointer">
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-2 border px-3 py-2 rounded text-gray-700 text-xs"
+                >
                   <Copy className="w-4 h-4" />
                   Copy Link
                 </button>

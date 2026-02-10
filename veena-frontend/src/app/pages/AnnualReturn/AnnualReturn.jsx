@@ -4,6 +4,37 @@ import React from "react";
 import { FaFilePdf } from "react-icons/fa";
 import { useGetAnnualReturnQuery } from "../../../../store/annualReturn/annualReturnApi";
 
+const AnnualReturnSkeleton = () => {
+  return (
+    <>
+      {/* Hero Skeleton */}
+      <section className="py-20 bg-gray-300 animate-pulse">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="h-10 w-72 mx-auto bg-gray-400 rounded" />
+        </div>
+      </section>
+
+      {/* Table Skeleton */}
+      <section className="py-10 bg-gray-100 animate-pulse">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <div className="h-12 bg-blue-200" />
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="flex justify-between px-6 py-4 border-b"
+              >
+                <div className="h-4 w-1/2 bg-gray-300 rounded" />
+                <div className="h-4 w-24 bg-gray-300 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+};
+
 const AnnualReturn = () => {
   const {
     data: AnnualReturn,
@@ -12,13 +43,7 @@ const AnnualReturn = () => {
   } = useGetAnnualReturnQuery();
 
   if (AnnualReturnLoading) {
-    return (
-      <section className="py-12 bg-white">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </section>
-    );
+    return <AnnualReturnSkeleton />
   }
 
   if (AnnualReturnError) {

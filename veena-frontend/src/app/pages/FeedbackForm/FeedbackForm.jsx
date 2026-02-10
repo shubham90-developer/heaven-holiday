@@ -3,6 +3,7 @@
 import Breadcrumb from "@/app/components/Breadcum";
 import React, { useState, useRef } from "react";
 import { useCreateFeedbackMutation } from "../../../../store/reviewsFeedback/reviewsApi";
+import toast from "react-hot-toast";
 
 const FeedbackForm = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +28,11 @@ const FeedbackForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!/^[0-9]{10}$/.test(formData.mobile)) {
+    toast.error("Please enter a valid 10-digit mobile number");
+    return;
+  }
+
     try {
       // Call the mutation with plain object (not FormData)
       const result = await createFeedback(formData).unwrap();
@@ -40,13 +46,13 @@ const FeedbackForm = () => {
       });
 
       // Show success message
-      alert("Feedback submitted successfully!");
+     toast.success("Feedback submitted successfully!");
     } catch (err) {
       // Error handling
       console.error("Failed to submit feedback:", err);
-      alert(
-        err?.data?.message || "Failed to submit feedback. Please try again.",
-      );
+      toast.error(
+      err?.data?.message || "Failed to submit feedback. Please try again."
+    );
     }
   };
 

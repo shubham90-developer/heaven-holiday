@@ -7,6 +7,69 @@ import { useGetContactFeaturesQuery } from "../../../../store/contact-office/con
 import { useGetContactDetailsQuery } from "../../../../store/aboutUsApi/contactApi";
 import { useGetTourManagerDirectoryQuery } from "../../../../store/toursManagement/tourManagersApi";
 import { useCreateEnquiryMutation } from "../../../../store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
+
+const RightSidebarSkeleton = () => {
+  return (
+    <div className="space-y-6 animate-pulse">
+      {/* Contact Form Skeleton */}
+      <div className="bg-gray-100 shadow rounded-lg p-4">
+        <div className="h-4 w-40 bg-gray-300 rounded mb-4" />
+        <div className="h-9 bg-gray-300 rounded-xl mb-2" />
+        <div className="h-9 bg-gray-300 rounded-xl mb-3" />
+        <div className="h-10 bg-gray-400 rounded" />
+      </div>
+
+      {/* Banner Skeleton */}
+      <div className="grid grid-cols-1 gap-4">
+        {[...Array(2)].map((_, i) => (
+          <div
+            key={i}
+            className="h-64 bg-gray-300 rounded-xl shadow"
+          />
+        ))}
+      </div>
+
+      {/* Tour Manager Skeleton */}
+      <div className="bg-gray-900 rounded-lg p-4 flex gap-3 items-center">
+        <div className="w-16 h-16 bg-gray-700 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 w-3/4 bg-gray-700 rounded" />
+          <div className="h-3 w-full bg-gray-700 rounded" />
+        </div>
+      </div>
+
+      {/* Info Box Skeleton */}
+      <div className="rounded-xl p-5 bg-blue-900 space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex gap-3">
+            <div className="w-7 h-7 bg-blue-700 rounded" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-2/3 bg-blue-700 rounded" />
+              <div className="h-3 w-full bg-blue-700 rounded" />
+            </div>
+          </div>
+        ))}
+
+        <div className="bg-gray-200 rounded-lg p-4">
+          <div className="h-3 w-3/4 bg-gray-300 rounded mx-auto mb-3" />
+          <div className="flex justify-around">
+            <div className="h-6 w-10 bg-gray-300 rounded" />
+            <div className="h-6 w-10 bg-gray-300 rounded" />
+          </div>
+        </div>
+      </div>
+
+      {/* Corporate Office Skeleton */}
+      <div className="bg-[#06192f] rounded-lg p-5 space-y-3">
+        <div className="h-4 w-40 bg-gray-600 rounded" />
+        <div className="h-3 w-full bg-gray-600 rounded" />
+        <div className="h-3 w-5/6 bg-gray-600 rounded" />
+        <div className="h-3 w-32 bg-gray-600 rounded" />
+      </div>
+    </div>
+  );
+};
 
 const RightSidebar = () => {
   const featureImage = [
@@ -55,12 +118,12 @@ const RightSidebar = () => {
     e.preventDefault();
 
     if (!formData.name || !formData.mono) {
-      alert("Please fill all fields!");
+      toast.error("Please fill in all fields");
       return;
     }
 
     if (!/^[0-9]{10}$/.test(formData.mono)) {
-      alert("Mobile number must be exactly 10 digits!");
+      toast.error("Mobile number must be exactly 10 digits");
       return;
     }
 
@@ -72,11 +135,11 @@ const RightSidebar = () => {
         status: "active",
       }).unwrap();
 
-      alert("Request submitted successfully! We will call you back soon.");
+      toast.success("Request submitted successfully! We will call you back soon.");
       setFormData({ name: "", mono: "" });
     } catch (error) {
-      alert(
-        error?.data?.message || "Failed to submit request. Please try again.",
+      toast.error(
+        error?.data?.message || "Failed to submit request. Please try again."
       );
     }
   };
@@ -88,13 +151,7 @@ const RightSidebar = () => {
     isContactFeaturesLoading ||
     isContactDetailsLoading
   ) {
-    return (
-      <section className="py-12 bg-white">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </section>
-    );
+    return <RightSidebarSkeleton />;
   }
 
   // Handle error state for all queries

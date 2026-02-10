@@ -4,6 +4,24 @@ import Breadcrumb from "@/app/components/Breadcum";
 import React, { useState } from "react";
 import { useGetAboutUsQuery } from "../../../../store/aboutUsApi/aboutUsApi";
 
+const AboutUsSkeleton = () => {
+  return (
+    <section className="py-10 bg-gray-100 animate-pulse">
+      <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-8 items-center">
+        {/* Left */}
+        <div>
+          <div className="h-8 w-3/4 bg-gray-300 rounded mb-4" />
+          <div className="h-4 w-full bg-gray-300 rounded mb-2" />
+          <div className="h-4 w-5/6 bg-gray-300 rounded" />
+        </div>
+
+        {/* Right */}
+        <div className="w-full aspect-video bg-gray-300 rounded-lg" />
+      </div>
+    </section>
+  );
+};
+
 const AboutUs = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const breadcrumbItems = [
@@ -17,7 +35,7 @@ const AboutUs = () => {
   }
   const { data, error, isLoading } = useGetAboutUsQuery();
   if (isLoading) {
-    return <p>loading</p>;
+    return <AboutUsSkeleton />;
   }
   if (error) {
     return <p>error while fetching data</p>;

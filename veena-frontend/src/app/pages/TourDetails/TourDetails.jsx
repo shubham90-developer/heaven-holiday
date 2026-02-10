@@ -41,6 +41,8 @@ import BookingStepperModal from "@/app/components/bookingModals";
 import { useState } from "react";
 import { useGetTourReviewQuery } from "store/reviewsApi/reviewsApi";
 import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
+
 const TourDetails = () => {
   const breadcrumbItems = [
     { label: "Home", href: "/" },
@@ -140,12 +142,12 @@ const TourDetails = () => {
     e.preventDefault();
 
     if (!formData.name || !formData.mono) {
-      alert("Please fill all fields!");
+      toast.error("Please fill all required fields");
       return;
     }
 
     if (!/^[0-9]{10}$/.test(formData.mono)) {
-      alert("Mobile number must be exactly 10 digits!");
+      toast.error("Mobile number must be exactly 10 digits");
       return;
     }
 
@@ -157,11 +159,12 @@ const TourDetails = () => {
         status: "active",
       }).unwrap();
 
-      alert("Request submitted successfully! We will call you back soon.");
+      toast.success("Request submitted! We’ll call you soon 📞");
       setFormData({ name: "", mono: "" });
     } catch (error) {
-      alert(
-        error?.data?.message || "Failed to submit request. Please try again.",
+      toast.error(
+        error?.data?.message || "Failed to submit request",
+        { id: toastId }
       );
     }
   };

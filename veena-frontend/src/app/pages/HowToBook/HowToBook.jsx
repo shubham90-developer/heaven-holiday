@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { useGetContactDetailsQuery } from "../../../../store/aboutUsApi/contactApi";
 import { useGetOnlineBookingQuery } from "../../../../store/onlineBookingApi/stepsApi";
 import { useCreateEnquiryMutation } from "../../../../store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
 
 const HowToBook = () => {
   // Form state
@@ -34,12 +35,12 @@ const HowToBook = () => {
     e.preventDefault();
 
     if (!formData.name || !formData.mono) {
-      alert("Please fill all fields!");
+      toast.error("Please fill all fields");
       return;
     }
 
     if (!/^[0-9]{10}$/.test(formData.mono)) {
-      alert("Mobile number must be exactly 10 digits!");
+      toast.error("Mobile number must be exactly 10 digits");
       return;
     }
 
@@ -51,12 +52,12 @@ const HowToBook = () => {
         status: "active",
       }).unwrap();
 
-      alert("Request submitted successfully! We will call you back soon.");
+      toast.success(
+        "Request submitted successfully! We will call you back soon.");
       setFormData({ name: "", mono: "" });
     } catch (error) {
-      alert(
-        error?.data?.message || "Failed to submit request. Please try again.",
-      );
+      toast.error(
+        error?.data?.message || "Failed to submit request. Please try again.")
     }
   };
 

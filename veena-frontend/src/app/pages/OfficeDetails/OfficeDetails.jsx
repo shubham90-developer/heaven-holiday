@@ -7,6 +7,7 @@ import TourReview from "@/app/components/TourReview";
 import HolidayDestinations from "./HolidayDestinations";
 import ContactForm from "./ContactForm";
 import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
 
 const OfficeDetails = () => {
   const [open, setOpen] = useState(false);
@@ -44,12 +45,18 @@ const OfficeDetails = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!/^[0-9]{10}$/.test(formData.mono)) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
     try {
       await createEnquiry({
         ...formData,
         message: "Request Call Back",
       }).unwrap();
-      alert("Call back request submitted successfully!");
+      toast.success("Call back request submitted successfully!");
       setFormData({
         name: "",
         mono: "",
@@ -58,7 +65,8 @@ const OfficeDetails = () => {
       });
     } catch (err) {
       console.error("Failed to submit request:", err);
-      alert("Failed to submit request. Please try again.");
+      toast.error(
+      err?.data?.message || "Failed to submit request. Please try again.")
     }
   };
 
@@ -130,9 +138,8 @@ const OfficeDetails = () => {
                     {hours.map((h, idx) => (
                       <div
                         key={idx}
-                        className={`flex justify-between py-1 text-sm ${
-                          h.highlight ? "font-bold text-black" : "text-gray-700"
-                        }`}
+                        className={`flex justify-between py-1 text-sm ${h.highlight ? "font-bold text-black" : "text-gray-700"
+                          }`}
                       >
                         <span>{h.day}</span>
                         <span>{h.time}</span>

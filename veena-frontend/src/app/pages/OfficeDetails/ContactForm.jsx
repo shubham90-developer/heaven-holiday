@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
 
 const ContactForm = () => {
   const [createEnquiry, { isLoading: isSubmitting }] =
@@ -22,9 +23,15 @@ const ContactForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!/^[0-9]{10}$/.test(formData.mono)) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
     try {
       await createEnquiry(formData).unwrap();
-      alert("Enquiry submitted successfully!");
+      toast.success("Enquiry submitted successfully!");
       setFormData({
         name: "",
         mono: "",
@@ -34,7 +41,8 @@ const ContactForm = () => {
       });
     } catch (err) {
       console.error("Failed to submit enquiry:", err);
-      alert("Failed to submit enquiry. Please try again.");
+      toast.error(
+        err?.data?.message || "Failed to submit enquiry. Please try again.");
     }
   };
 

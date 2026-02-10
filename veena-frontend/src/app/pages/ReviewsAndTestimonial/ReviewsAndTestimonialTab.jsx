@@ -5,6 +5,7 @@ import {
   useCreateFeedbackMutation,
   useGetAllFeedbacksQuery,
 } from "../../../../store/reviewsFeedback/reviewsApi";
+import toast from "react-hot-toast";
 
 const ReviewsAndTestimonialTab = () => {
   const [activeTab, setActiveTab] = useState("reviews");

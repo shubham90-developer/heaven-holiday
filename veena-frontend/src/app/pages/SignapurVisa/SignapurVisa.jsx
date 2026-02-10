@@ -4,6 +4,7 @@ import { Phone } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useCreateEnquiryMutation } from "../../../../store/enquiryApi/enquiryApi";
+import toast from "react-hot-toast";
 
 const SignapurVisa = () => {
   const [formData, setFormData] = useState({
@@ -42,10 +43,12 @@ const SignapurVisa = () => {
         mono: "",
       });
 
-      alert("Call back request submitted successfully!");
+      toast.success("Callback request submitted successfully 📞");
+
     } catch (error) {
       console.error("Failed to submit request:", error);
-      alert(error?.data?.message || "Failed to submit. Please try again.");
+      toast.error(
+        error?.data?.message || "Failed to submit request. Please try again.")
     }
   };
 

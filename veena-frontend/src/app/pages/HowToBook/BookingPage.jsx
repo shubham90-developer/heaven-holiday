@@ -4,6 +4,8 @@ import { useGetOnlineBookingQuery } from "../../../../store/onlineBookingApi/ste
 import { useGetContactDetailsQuery } from "../../../../store/aboutUsApi/contactApi";
 import { useCreateEnquiryMutation } from "../../../../store/enquiryApi/enquiryApi";
 import { useGetCounterQuery } from "../../../../store/counterApi/counterApi";
+import toast from "react-hot-toast";
+
 /** Utility for conditional classes */
 function classNames(...c) {
   return c.filter(Boolean).join(" ");
@@ -74,6 +76,11 @@ export default function BookingTabs() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (formData.message.trim().length < 10) {
+      toast.error("Message must be at least 10 characters long");
+      return;
+    }
+
     try {
       // Add destinations with default value
       const submitData = {
@@ -91,12 +98,13 @@ export default function BookingTabs() {
         message: "",
       });
 
-      alert("Enquiry submitted successfully!");
+      toast.success("Enquiry submitted successfully!");
+      
     } catch (error) {
       console.error("Failed to submit enquiry:", error);
       const errorMessage =
         error?.data?.message || "Failed to submit enquiry. Please try again.";
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

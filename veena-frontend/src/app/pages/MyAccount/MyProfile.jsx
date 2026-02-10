@@ -7,6 +7,7 @@ import {
   useUpdateProfileMutation,
   useUpdateAddressMutation,
 } from "store/authApi/authApi";
+import toast from "react-hot-toast";
 
 const MyProfile = () => {
   const [openProfile, setOpenProfile] = useState(true);
@@ -55,10 +56,14 @@ const MyProfile = () => {
         address: formData.address,
       }).unwrap();
 
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
+
     } catch (error) {
       console.error("Update error:", error);
-      alert("Failed to update profile");
+      toast.error(
+        error?.data?.message || "Failed to update profile",
+        { id: toastId }
+      );
     }
   };
 
@@ -97,9 +102,8 @@ const MyProfile = () => {
         >
           <span className="font-semibold">My Profile</span>
           <FaChevronDown
-            className={`transform transition ${
-              openProfile ? "rotate-180" : ""
-            }`}
+            className={`transform transition ${openProfile ? "rotate-180" : ""
+              }`}
           />
         </button>
 
@@ -111,31 +115,28 @@ const MyProfile = () => {
             <div className="flex gap-4 mb-4">
               <button
                 onClick={() => setFormData({ ...formData, gender: "male" })}
-                className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${
-                  formData.gender === "male"
+                className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${formData.gender === "male"
                     ? "bg-blue-900 text-white border-blue-900"
                     : "hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 Male
               </button>
               <button
                 onClick={() => setFormData({ ...formData, gender: "female" })}
-                className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${
-                  formData.gender === "female"
+                className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${formData.gender === "female"
                     ? "bg-blue-900 text-white border-blue-900"
                     : "hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 Female
               </button>
               <button
                 onClick={() => setFormData({ ...formData, gender: "other" })}
-                className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${
-                  formData.gender === "other"
+                className={`px-4 py-1 text-xs border cursor-pointer rounded-md ${formData.gender === "other"
                     ? "bg-blue-900 text-white border-blue-900"
                     : "hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 Other
               </button>
