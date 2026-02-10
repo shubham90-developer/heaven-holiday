@@ -84,6 +84,8 @@ import { becomePartnerFormRouter } from '../modules/becomePartnerForm/formRoutes
 import { commentRouter } from '../modules/comments/commentRoutes';
 import { IncludedRouter } from '../modules/toursIncluded/toursIncludedRoutes';
 import { bookingRouter } from '../modules/bookPackage/bookingRoutes';
+import { brandsRouter } from "../modules/brands/brandsRoutes";
+
 const router = Router();
 const moduleRoutes = [
   {
@@ -451,6 +453,10 @@ const moduleRoutes = [
     path: '/booking',
     route: bookingRouter,
   },
+  {
+    path: '/brands',
+    route: brandsRouter,
+  }
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
