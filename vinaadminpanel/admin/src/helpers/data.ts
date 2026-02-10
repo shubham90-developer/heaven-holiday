@@ -4,7 +4,6 @@ import { BrandListType, Employee, FilesType, InvoicesType, UserType } from "@/ty
 import { sleep } from "@/utils/promise"
 
 
-
 export const getBrandsList =async (): Promise<BrandListType[]> => {
   await sleep()
   return brandListData

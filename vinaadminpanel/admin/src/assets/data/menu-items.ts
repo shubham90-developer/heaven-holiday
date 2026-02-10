@@ -372,6 +372,19 @@ export const MENU_ITEMS: MenuItemType[] = [
     icon: "tabler:file-text",
     url: "/pages/terms&conditions",
   },
+  {
+    key: "general-settings",
+    label: "General Settings",
+    icon: "tabler:settings",
+    url: "/pages/general-settings",
+  },
+  {
+    key: "corporate-logo",
+    label: "Corporate Logo",
+    icon: "tabler:settings",
+    url: "/pages/corporate-logo",
+  }
+
   // {
   //   key: "calendar",
   //   label: "Calendar",
