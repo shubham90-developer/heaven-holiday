@@ -348,3 +348,6 @@ const SearchBar = ({ mobile = false }) => {
 };
 
 export default SearchBar;
+
+
+
