@@ -5,7 +5,9 @@ import { Phone, MapPin, Share2, X } from "lucide-react";
 import { FaSms, FaWhatsapp } from "react-icons/fa";
 import Link from "next/link";
 import CitySection from "./CitySection";
-import { useGetAllOfficesQuery } from "../../../../store/contact-office/contactOfficeApi";
+import { useGetAllOfficesQuery } 
+from "../../../../store/contact-office/contactOfficeApi";
+
 
 const OfficeCard = () => {
   const [selectedOffice, setSelectedOffice] = useState(null);
@@ -94,7 +96,7 @@ const OfficeCard = () => {
           {/* Bottom Row */}
           <div className="flex flex-wrap items-center gap-4 mt-4">
             <Link
-              href="/contact-us/office-details"
+              href={`/contact-us/office-details/${office._id}`}
               className="bg-red-700 hover:bg-red-500 text-white px-4 py-2 rounded-md text-xs font-medium"
             >
               Office Details
@@ -161,11 +163,10 @@ const OfficeCard = () => {
             <div className="flex gap-3 mt-4">
               <button
                 disabled={!consent}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium ${
-                  consent
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium ${consent
                     ? "bg-green-500 text-white hover:bg-green-600"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                }`}
+                  }`}
               >
                 <FaWhatsapp size={16} />
                 WhatsApp
@@ -173,11 +174,10 @@ const OfficeCard = () => {
 
               <button
                 disabled={!consent}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium ${
-                  consent
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium ${consent
                     ? "bg-red-700 text-white hover:bg-yellow-500"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                }`}
+                  }`}
               >
                 <FaSms size={16} />
                 SMS
