@@ -19,7 +19,7 @@ router.put('/categories/:categoryId', upload.single('image'), updateCategory);
 router.delete('/categories/:categoryId', deleteCategory);
 
 router.post(
-  '/tour-package-cards',
+  '/',
   upload.array('galleryImages', 10),
   createTourPackageCard,
 );

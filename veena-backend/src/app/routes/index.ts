@@ -456,6 +456,10 @@ const moduleRoutes = [
   {
     path: '/brands',
     route: brandsRouter,
+  },
+  {
+    path: '/contact',
+    route: contractRouter,
   }
 ];
 
