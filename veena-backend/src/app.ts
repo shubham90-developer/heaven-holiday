@@ -1,4 +1,12 @@
 import express, { Application, Request, Response } from 'express';
+import dns from "node:dns/promises";
+// dns.setServers(["8.8.8.8"]); // Force Google DNS for this app session
+dns.setServers([
+  "8.8.8.8",
+  "8.8.4.4"
+]);
+
+
 import cors, { CorsOptions } from 'cors';
 import router from './app/routes';
 import notFound from './app/middlewares/notFound';
