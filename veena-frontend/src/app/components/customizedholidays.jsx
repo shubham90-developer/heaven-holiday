@@ -53,41 +53,66 @@ export default function CustomizedHolidays() {
           </Link>
 
           <ul className="space-y-3 sm:space-y-4">
-            <li className="flex items-center gap-3">
-              <Users className="w-5 h-5 text-gray-600 shrink-0" />
-              <span className="text-gray-700 text-sm">Family Fun</span>
+
+            <li>
+              <Link href="/tour-list" className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-gray-600 shrink-0" />
+                <span className="text-gray-700 text-sm">Family Fun</span>
+              </Link>
             </li>
-            <li className="flex items-center gap-3">
-              <Heart className="w-5 h-5 text-gray-600 shrink-0" />
-              <span className="text-gray-700 text-sm">Romantic Holidays</span>
+
+            <li>
+              <Link href="/tour-list" className="flex items-center gap-3">
+                <Heart className="w-5 h-5 text-gray-600 shrink-0" />
+                <span className="text-gray-700 text-sm">Romantic Holidays</span>
+              </Link>
             </li>
-            <li className="flex items-center gap-3">
-              <Compass className="w-5 h-5 text-gray-600 shrink-0" />
-              <span className="text-gray-700 text-sm">Getaways</span>
+
+            <li>
+              <Link href="/tour-list" className="flex items-center gap-3">
+                <Compass className="w-5 h-5 text-gray-600 shrink-0" />
+                <span className="text-gray-700 text-sm">Getaways</span>
+              </Link>
             </li>
-            <li className="flex items-center gap-3 flex-wrap">
-              <Gift className="w-5 h-5 text-gray-600 shrink-0" />
-              <span className="text-gray-700 text-sm flex items-center flex-wrap gap-1">
-                Hidden Gems
-                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded">
-                  Newly Launched
+
+            <li>
+              <Link
+                href="/tour-list"
+                className="flex items-center gap-3 flex-wrap"
+              >
+                <Gift className="w-5 h-5 text-gray-600 shrink-0" />
+                <span className="text-gray-700 text-sm flex items-center flex-wrap gap-1">
+                  Hidden Gems
+                  <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded">
+                    Newly Launched
+                  </span>
                 </span>
-              </span>
+              </Link>
             </li>
-            <li className="flex items-center gap-3">
-              <Car className="w-5 h-5 text-gray-600 shrink-0" />
-              <span className="text-gray-700 text-sm">Self Drive Holidays</span>
+
+            <li>
+              <Link href="/tour-list" className="flex items-center gap-3">
+                <Car className="w-5 h-5 text-gray-600 shrink-0" />
+                <span className="text-gray-700 text-sm">Self Drive Holidays</span>
+              </Link>
             </li>
-            <li className="flex items-center gap-3">
-              <Plane className="w-5 h-5 text-gray-600 shrink-0" />
-              <span className="text-gray-700 text-sm">
-                Air Inclusive Holidays
-              </span>
+
+            <li>
+              <Link href="/tour-list" className="flex items-center gap-3">
+                <Plane className="w-5 h-5 text-gray-600 shrink-0" />
+                <span className="text-gray-700 text-sm">
+                  Air Inclusive Holidays
+                </span>
+              </Link>
             </li>
-            <li className="flex items-center gap-3">
-              <Ship className="w-5 h-5 text-gray-600 shrink-0" />
-              <span className="text-gray-700 text-sm">Cruise Holidays</span>
+
+            <li>
+              <Link href="/tour-list" className="flex items-center gap-3">
+                <Ship className="w-5 h-5 text-gray-600 shrink-0" />
+                <span className="text-gray-700 text-sm">Cruise Holidays</span>
+              </Link>
             </li>
+
           </ul>
         </div>
 
