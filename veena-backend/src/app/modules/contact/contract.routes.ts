@@ -75,7 +75,7 @@ router.post('/', createContract);
  *         description: Unauthorized
  */
 // Get all contracts (admin only)
-router.get('/', auth('admin'), getAllContracts);
+router.get('/', getAllContracts);
 
 /**
  * @swagger
@@ -102,7 +102,7 @@ router.get('/', auth('admin'), getAllContracts);
  *         description: Not found
  */
 // Get a single contract by ID
-router.get('/:id', auth('admin'), getContractById);
+router.get('/:id', getContractById);
 
 /**
  * @swagger
@@ -135,7 +135,7 @@ router.get('/:id', auth('admin'), getContractById);
  *         description: Not found
  */
 // Update a contract by ID (admin only)
-router.put('/:id', auth('admin'), updateContractById);
+router.put('/:id', updateContractById);
 
 /**
  * @swagger
@@ -162,7 +162,7 @@ router.put('/:id', auth('admin'), updateContractById);
  *         description: Not found
  */
 // Delete a contract by ID (admin only)
-router.delete('/:id', auth('admin'), deleteContractById);
+router.delete('/:id', deleteContractById);
 
 /**
  * @swagger
