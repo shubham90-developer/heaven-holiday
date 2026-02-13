@@ -383,6 +383,11 @@ export const MENU_ITEMS: MenuItemType[] = [
     label: "Corporate Logo",
     icon: "tabler:settings",
     url: "/pages/corporate-logo",
+  }, {
+    key: "contract",
+    label: "Corporate Enquiries",
+    icon: "tabler:settings",
+    url: "/pages/contract"
   }
 
   // {
