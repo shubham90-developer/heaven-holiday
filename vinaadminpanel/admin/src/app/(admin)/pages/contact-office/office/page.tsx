@@ -13,7 +13,6 @@ import {
   useUpdateOfficeMutation,
   useDeleteOfficeMutation,
 } from "@/app/redux/api/contactOffice/contactOfficeApi";
-
 import Link from "next/link";
 
 type AlertType = {
@@ -21,6 +20,16 @@ type AlertType = {
   message: string;
   variant: "success" | "danger" | "warning" | "info";
 };
+
+const defaultTimings = [
+  { day: "Monday", open: "", close: "", closed: false },
+  { day: "Tuesday", open: "", close: "", closed: false },
+  { day: "Wednesday", open: "", close: "", closed: false },
+  { day: "Thursday", open: "", close: "", closed: false },
+  { day: "Friday", open: "", close: "", closed: false },
+  { day: "Saturday", open: "", close: "", closed: false },
+  { day: "Sunday", open: "", close: "", closed: false },
+];
 
 const quillModules = {
   toolbar: [
@@ -42,7 +51,7 @@ const quillModules = {
 };
 
 const OfficesPage = () => {
-  // --- Data fetching & mutations ---
+  // ✅ DATA FETCHING
   const { data, isLoading, isError } = useGetAllOfficesQuery(undefined);
   const [createOffice, { isLoading: isCreating }] = useCreateOfficeMutation();
   const [updateOffice, { isLoading: isUpdating }] = useUpdateOfficeMutation();
@@ -50,17 +59,21 @@ const OfficesPage = () => {
 
   const offices = data?.data || [];
 
-  // --- State ---
+  // ✅ STATES
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Office state
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState("active");
   const [forex, setForex] = useState(false);
   const [editingOfficeId, setEditingOfficeId] = useState<string | null>(null);
+
+  const [mapUrl, setMapUrl] = useState("");
+  const [officeState, setOfficeState] = useState("open");
+
+  const [timings, setTimings] = useState(defaultTimings);
 
   const [alert, setAlert] = useState<AlertType>({
     show: false,
@@ -75,6 +88,12 @@ const OfficesPage = () => {
     }, 5000);
   };
 
+  const handleTimingChange = (index: number, field: string, value: any) => {
+    const updated = [...timings];
+    updated[index] = { ...updated[index], [field]: value };
+    setTimings(updated);
+  };
+
   const handleCloseModal = () => {
     setShowModal(false);
     setIsEditMode(false);
@@ -83,27 +102,35 @@ const OfficesPage = () => {
     setPhone("");
     setStatus("active");
     setForex(false);
+    setMapUrl("");
+    setOfficeState("open");
+    setTimings(defaultTimings);
     setEditingOfficeId(null);
   };
 
-  // --- Office Modal Handlers ---
   const handleOpenModal = (editMode: boolean, office?: any) => {
     setIsEditMode(editMode);
+
     if (editMode && office) {
       setCity(office.city);
       setAddress(office.address);
       setPhone(office.phone);
       setStatus(office.status || "active");
       setForex(office.forex === true);
+      setMapUrl(office.mapUrl || "");
+      setOfficeState(office.officeState || "open");
+
+      // ✅ FIXED HERE
+      setTimings(
+        office.timings && office.timings.length > 0
+          ? office.timings
+          : defaultTimings
+      );
       setEditingOfficeId(office._id);
     } else {
-      setCity("");
-      setAddress("");
-      setPhone("");
-      setStatus("active");
-      setForex(false);
-      setEditingOfficeId(null);
+      handleCloseModal();
     }
+
     setShowModal(true);
   };
 
@@ -122,6 +149,9 @@ const OfficesPage = () => {
         phone,
         status,
         forex,
+        mapUrl,
+        officeState,
+        timings: timings.map(t => ({ ...t })), // ✅ FIXED
       };
 
       if (isEditMode && editingOfficeId) {
@@ -131,17 +161,16 @@ const OfficesPage = () => {
         await createOffice(payload).unwrap();
         showAlert("Office added successfully!", "success");
       }
+
       handleCloseModal();
     } catch (err: any) {
-      showAlert(
-        err?.data?.message || `${isEditMode ? "Update" : "Creation"} failed!`,
-        "danger",
-      );
+      showAlert(err?.data?.message || "Operation failed!", "danger");
     }
   };
 
   const handleDeleteOffice = async (officeId: string) => {
     if (!confirm("Are you sure you want to delete this office?")) return;
+
     try {
       await deleteOffice(officeId).unwrap();
       showAlert("Office deleted successfully!", "success");
@@ -150,35 +179,10 @@ const OfficesPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div
-        className="d-flex align-items-center justify-content-center"
-        style={{ minHeight: "100vh" }}
-      >
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="text-center p-5">Loading...</div>;
 
-  if (isError) {
-    return (
-      <div className="container mt-5">
-        <Alert variant="danger" className="d-flex align-items-center">
-          <IconifyIcon
-            icon="solar:danger-triangle-bold-duotone"
-            className="fs-20 me-2"
-          />
-          <div>
-            <strong>Error!</strong> Failed to load offices. Please try again
-            later.
-          </div>
-        </Alert>
-      </div>
-    );
-  }
+  if (isError)
+    return <div className="text-center p-5 text-danger">Error loading offices</div>;
 
   return (
     <>
@@ -186,29 +190,9 @@ const OfficesPage = () => {
         <Col xs={12}>
           <PageTitle title="Offices Management" subTitle="Content Management" />
 
-          {alert.show && (
-            <Alert
-              variant={alert.variant}
-              dismissible
-              onClose={() => setAlert({ ...alert, show: false })}
-              className="d-flex align-items-center mb-3"
-            >
-              <IconifyIcon
-                icon={
-                  alert.variant === "success"
-                    ? "solar:check-read-line-duotone"
-                    : alert.variant === "danger"
-                      ? "solar:danger-triangle-bold-duotone"
-                      : alert.variant === "warning"
-                        ? "solar:shield-warning-line-duotone"
-                        : "solar:info-circle-bold-duotone"
-                }
-                className="fs-20 me-2"
-              />
-              <div className="lh-1">{alert.message}</div>
-            </Alert>
-          )}
+          {alert.show && <Alert variant={alert.variant}>{alert.message}</Alert>}
 
+          {/* ✅ YOUR TABLE SECTION (RESTORED) */}
           <ComponentContainerCard
             title="Offices"
             description="Manage your office locations and details."
@@ -228,57 +212,71 @@ const OfficesPage = () => {
                     <th>City</th>
                     <th>Address</th>
                     <th>Phone</th>
+                    {/* <th>Forex</th> */}
+                    <th>Office state</th>
+                    <th>Map URL</th>
                     <th>Forex</th>
                     <th>Status</th>
                     <th className="text-center">Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {offices.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="text-center py-4">
-                        <p className="text-muted mb-0">No offices found!</p>
+                        No offices found!
                       </td>
                     </tr>
                   ) : (
                     offices.map((office: any, index: number) => (
-                      <tr key={office._id || index}>
+                      <tr key={office._id}>
                         <td>{index + 1}</td>
                         <td>{office.city}</td>
+
                         <td>
                           <div
-                            dangerouslySetInnerHTML={{
-                              __html: office.address,
-                            }}
-                            style={{
-                              maxWidth: "300px",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
+                            dangerouslySetInnerHTML={{ __html: office.address }}
                           />
                         </td>
+
                         <td>{office.phone}</td>
+
+                        {/* <td>
+                          <span
+                            className={`badge ${office.forex ? "bg-success" : "bg-secondary"
+                              }`}
+                          >
+                            {office.forex ? "Yes" : "No"}
+                          </span>
+                        </td> */}
+
+                        <td>{office.officeState}</td>
+
+                        <td>{office.mapUrl}</td>
+
                         <td>
                           <span
-                            className={`badge ${
-                              office.forex ? "bg-success" : "bg-secondary"
-                            }`}
+                            className={`badge ${office.forex ? "bg-success" : "bg-secondary"
+                              }`}
                           >
                             {office.forex ? "Yes" : "No"}
                           </span>
                         </td>
+
                         <td>
                           <span
-                            className={`badge ${
-                              office.status === "Active" ||
-                              office.status === "active"
-                                ? "bg-success"
-                                : "bg-danger"
-                            }`}
+                            className={`badge ${office.status === "active"
+                              ? "bg-success"
+                              : "bg-danger"
+                              }`}
                           >
                             {office.status}
                           </span>
                         </td>
+
+                        {/* <td>{office.}</td> */}
+
                         <td className="text-center">
                           <Link
                             href=""
@@ -286,17 +284,16 @@ const OfficesPage = () => {
                               e.preventDefault();
                               handleOpenModal(true, office);
                             }}
-                            className="link-reset fs-20 p-1"
                           >
                             <IconifyIcon icon="tabler:pencil" />
                           </Link>
+
                           <Link
                             href=""
                             onClick={(e) => {
                               e.preventDefault();
                               handleDeleteOffice(office._id);
                             }}
-                            className="link-reset fs-20 p-1"
                           >
                             <IconifyIcon icon="tabler:trash" />
                           </Link>
@@ -311,91 +308,80 @@ const OfficesPage = () => {
         </Col>
       </Row>
 
+      {/* ✅ MODAL */}
       <Modal show={showModal} onHide={handleCloseModal} centered size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>{isEditMode ? "Edit Office" : "Add Office"}</Modal.Title>
+          <Modal.Title>
+            {isEditMode ? "Edit Office" : "Add Office"}
+          </Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           <Form onSubmit={handleOfficeSubmit}>
+
             <Form.Group className="mb-3">
               <Form.Label>City *</Form.Label>
-              <Form.Control
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Enter city name"
-                required
-              />
+              <Form.Control value={city} onChange={(e) => setCity(e.target.value)} />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Address *</Form.Label>
-              <div style={{ height: "250px" }}>
-                <ReactQuill
-                  theme="snow"
-                  value={address}
-                  onChange={setAddress}
-                  modules={quillModules}
-                  placeholder="Enter office address..."
-                  style={{ height: "200px", marginBottom: "50px" }}
-                />
-              </div>
+              <ReactQuill value={address} onChange={setAddress} />
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Phone *</Form.Label>
-              <Form.Control
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter phone number (e.g., +1234567890 or 1234567890)"
-                required
-              />
-              <Form.Text className="text-muted">
-                Enter numbers only, optionally starting with +
-              </Form.Text>
+              <Form.Control value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </Form.Group>
+
+            {/* ✅ Missing Field Added */}
+            <Form.Group className="mb-3">
+              <Form.Label>Map URL</Form.Label>
+              <Form.Control value={mapUrl} onChange={(e) => setMapUrl(e.target.value)} />
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Status *</Form.Label>
-              <Form.Select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                required
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </Form.Select>
+              <Form.Label>Weekly Timings</Form.Label>
+
+              {timings.map((timing, index) => (
+                <div key={timing.day} className="d-flex gap-2 mb-2">
+
+                  <strong style={{ width: "90px" }}>{timing.day}</strong>
+
+                  <Form.Control
+                    type="time"
+                    value={timing.open}
+                    disabled={timing.closed}
+                    onChange={(e) =>
+                      handleTimingChange(index, "open", e.target.value)
+                    }
+                  />
+
+                  <Form.Control
+                    type="time"
+                    value={timing.close}
+                    disabled={timing.closed}
+                    onChange={(e) =>
+                      handleTimingChange(index, "close", e.target.value)
+                    }
+                  />
+
+                  <Form.Check
+                    type="checkbox"
+                    label="Closed"
+                    checked={timing.closed}
+                    onChange={(e) =>
+                      handleTimingChange(index, "closed", e.target.checked)
+                    }
+                  />
+                </div>
+              ))}
             </Form.Group>
 
-            <Form.Group className="mb-3">
-              <Form.Check
-                type="checkbox"
-                label="Forex Available"
-                checked={forex}
-                onChange={(e) => setForex(e.target.checked)}
-              />
-            </Form.Group>
+            <Button type="submit">
+              {isEditMode ? "Update" : "Add"}
+            </Button>
 
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={handleCloseModal}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isCreating || isUpdating}
-              >
-                {(isCreating || isUpdating) && (
-                  <span
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                )}
-                {isEditMode ? "Update" : "Add"}
-              </Button>
-            </div>
           </Form>
         </Modal.Body>
       </Modal>
