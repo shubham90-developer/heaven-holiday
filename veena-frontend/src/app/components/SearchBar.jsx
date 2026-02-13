@@ -349,83 +349,696 @@
 
 // export default SearchBar;
 
+// "use client";
+// import React, { useEffect, useState, useMemo } from "react";
+// import { Mic, Search, X } from "lucide-react";
+// import Image from "next/image";
+
+// // 1. Mock Master Data (In a real app, this comes from an API)
+// const TOUR_DATA = [
+//   { id: 1, name: "Swiss Alps Magic", region: "Europe", price: 250000, month: "Sep 2025", tags: ["Europe"] },
+//   { id: 2, name: "Paris Getaway", region: "Europe", price: 150000, month: "Oct 2025", tags: ["Europe", "Seniors' Special"] },
+//   { id: 3, name: "Thai Island Hopper", region: "South East Asia", price: 45000, month: "Nov 2025", tags: ["Phuket"] },
+//   { id: 4, name: "Dubai Luxury", region: "Africa", price: 120000, month: "Dec 2025", tags: ["Dubai"] },
+//   // ... add more mock items to test
+// ];
+
+// const SearchBar = ({ mobile = false }) => {
+//   const [isOpen, setIsOpen] = useState(false);
+//   const [activeTab, setActiveTab] = useState("month");
+//   const [selectedYear, setSelectedYear] = useState(2025);
+//   const [filters, setFilters] = useState([]);
+
+//   // Filter definitions
+//   const bestSeasons = ["Europe", "Seniors' Special", "Phuket", "Women's Special", "New Zealand", "Dubai"];
+//   const priceRanges = ["Below ₹35,000", "₹35,000 - ₹50,000", "₹50,000 - 1L", "1L - 2L", "2L - 3L", "3L & above"];
+//   const months = [
+//     { label: "Jan", tours: 0 }, { label: "Feb", tours: 0 }, { label: "Mar", tours: 0 },
+//     { label: "Apr", tours: 0 }, { label: "May", tours: 0 }, { label: "Jun", tours: 0 },
+//     { label: "Jul", tours: 0 }, { label: "Aug", tours: 0 }, { label: "Sep", tours: 54 },
+//     { label: "Oct", tours: 443 }, { label: "Nov", tours: 422 }, { label: "Dec", tours: 329 },
+//   ];
+
+//   const destinationBase = [
+//     { name: "Europe", img: "/assets/img/search/1.avif" },
+//     { name: "South East Asia", img: "/assets/img/search/2.avif" },
+//     { name: "America", img: "/assets/img/search/3.avif" },
+//     { name: "Australia New Zealand", img: "/assets/img/search/4.webp" },
+//     { name: "Africa", img: "/assets/img/search/5.avif" },
+//     { name: "Japan China Korea", img: "/assets/img/search/6.webp" },
+//   ];
+
+//   // 2. Dynamic Filtering Logic
+//   const filteredDestinations = useMemo(() => {
+//     return destinationBase.map((dest) => {
+//       const matchingTours = TOUR_DATA.filter((tour) => {
+//         // Must match the region
+//         if (tour.region !== dest.name) return false;
+
+//         // Apply active filters (Best Season, Months, Price)
+//         return filters.every((filter) => {
+//           // If filter is a month (e.g., "Sep 2025")
+//           if (filter.includes(selectedYear.toString())) {
+//             return tour.month === filter;
+//           }
+//           // If filter is a Best Season tag
+//           if (bestSeasons.includes(filter)) {
+//             return tour.tags.includes(filter);
+//           }
+//           // If filter is a Price Range
+//           if (priceRanges.includes(filter)) {
+//             const p = tour.price;
+//             if (filter === "Below ₹35,000") return p < 35000;
+//             if (filter === "₹35,000 - ₹50,000") return p >= 35000 && p <= 50000;
+//             if (filter === "₹50,000 - 1L") return p > 50000 && p <= 100000;
+//             if (filter === "1L - 2L") return p > 100000 && p <= 200000;
+//             if (filter === "2L - 3L") return p > 200000 && p <= 300000;
+//             if (filter === "3L & above") return p > 300000;
+//           }
+//           return true;
+//         });
+//       });
+
+//       return {
+//         ...dest,
+//         tours: matchingTours.length,
+//         departures: Math.floor(matchingTours.length * 1.2), // Mock logic for departures
+//       };
+//     });
+//   }, [filters, selectedYear]);
+
+//   const toggleFilter = (value) => {
+//     setFilters((prev) =>
+//       prev.includes(value) ? prev.filter((f) => f !== value) : [...prev, value]
+//     );
+//   };
+
+//   const placeholders = ['Search "Gulmarg"', 'Search "Europe"', 'Search "Dubai"'];
+//   const [index, setIndex] = useState(0);
+
+//   useEffect(() => {
+//     const interval = setInterval(() => setIndex((prev) => (prev + 1) % placeholders.length), 3000);
+//     return () => clearInterval(interval);
+//   }, []);
+
+//   return (
+//     <>
+//       {/* Search Input Trigger */}
+//       <div className={`${mobile ? "flex w-full" : "hidden md:flex flex-1 justify-center px-6"}`}>
+//         <div
+//           className="flex items-center w-full max-w-md bg-white/10 border border-gray-300 text-white rounded-full px-4 py-1.5 cursor-pointer"
+//           onClick={() => setIsOpen(true)}
+//         >
+//           <Search className="text-gray-400 w-3 h-3" />
+//           <input readOnly placeholder={placeholders[index]} className="flex-1 px-2 text-xs bg-transparent outline-none cursor-pointer" />
+//           <button className="text-blue-500 bg-gray-300 rounded-full p-2"><Mic className="w-3 h-3" /></button>
+//         </div>
+//       </div>
+
+//       {/* Modal */}
+//       {isOpen && (
+//         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+//           <div className="w-full max-w-6xl bg-white text-black rounded-xl shadow-lg flex flex-col max-h-[90vh]">
+//             {/* Header & Pills */}
+//             <div className="p-4 border-b">
+//               <div className="flex items-center gap-3">
+//                 <div className="flex items-center flex-1 bg-gray-100 rounded-full px-4 py-2">
+//                   <Search className="text-gray-400 w-5 h-5" />
+//                   <input className="flex-1 px-2 text-sm bg-transparent outline-none" placeholder="Search destinations..." />
+//                 </div>
+//                 <button onClick={() => setIsOpen(false)} className="bg-gray-200 p-2 rounded-full"><X className="w-5 h-5" /></button>
+//               </div>
+
+//               {filters.length > 0 && (
+//                 <div className="flex flex-wrap gap-2 mt-4">
+//                   {filters.map((f) => (
+//                     <span key={f} className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
+//                       {f} <X className="w-3 h-3 cursor-pointer" onClick={() => toggleFilter(f)} />
+//                     </span>
+//                   ))}
+//                 </div>
+//               )}
+//             </div>
+
+//             <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+//               {/* LEFT SIDE: Dynamic Destinations */}
+//               <div className="space-y-6 bg-yellow-50 p-4 rounded-lg">
+//                 <div>
+//                   <h3 className="font-bold text-sm border-b pb-2 mb-4">BEST SEASON TOURS</h3>
+//                   <div className="flex flex-wrap gap-2">
+//                     {bestSeasons.map((item) => (
+//                       <button
+//                         key={item}
+//                         onClick={() => toggleFilter(item)}
+//                         className={`px-4 py-1 rounded-full border text-xs ${filters.includes(item) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}
+//                       >
+//                         {item}
+//                       </button>
+//                     ))}
+//                   </div>
+//                 </div>
+
+//                 <div>
+//                   <h3 className="font-bold text-sm border-b pb-2 mb-4">HOT SELLING DESTINATIONS</h3>
+//                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                     {filteredDestinations.map((d) => (
+//                       <div key={d.name} className={`flex items-center gap-3 p-2 border rounded-lg hover:shadow cursor-pointer transition-opacity ${d.tours === 0 ? 'opacity-50' : 'opacity-100'}`}>
+//                         <Image src={d.img} alt={d.name} width={70} height={50} className="rounded-md object-cover" />
+//                         <div>
+//                           <p className="font-semibold text-sm">{d.name}</p>
+//                           <p className="text-xs text-gray-500">{d.tours} tours • {d.departures} departures</p>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+//               </div>
+
+//               {/* RIGHT SIDE: Filters */}
+//               <div className="space-y-6">
+//                 <div>
+//                   <h3 className="font-bold text-sm border-b pb-2 mb-4">When do you wish to travel?</h3>
+//                   <div className="flex gap-4 mb-3">
+//                     {[2025, 2026].map((year) => (
+//                       <button
+//                         key={year}
+//                         onClick={() => setSelectedYear(year)}
+//                         className={`px-3 py-1 rounded-md text-sm ${selectedYear === year ? "bg-blue-900 text-white" : "bg-gray-100"}`}
+//                       >
+//                         {year}
+//                       </button>
+//                     ))}
+//                   </div>
+//                   <div className="grid grid-cols-3 gap-2">
+//                     {months.map((m) => {
+//                       const filterKey = `${m.label} ${selectedYear}`;
+//                       return (
+//                         <button
+//                           key={m.label}
+//                           onClick={() => toggleFilter(filterKey)}
+//                           className={`px-3 py-2 rounded-lg border text-xs text-center ${filters.includes(filterKey) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}
+//                         >
+//                           {m.label}
+//                         </button>
+//                       );
+//                     })}
+//                   </div>
+//                 </div>
+
+//                 <div>
+//                   <h3 className="font-bold text-sm border-b pb-2 mb-4">Popular Range</h3>
+//                   <div className="flex flex-wrap gap-2">
+//                     {priceRanges.map((range) => (
+//                       <button
+//                         key={range}
+//                         onClick={() => toggleFilter(range)}
+//                         className={`px-4 py-1 rounded-full border text-xs ${filters.includes(range) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}
+//                       >
+//                         {range}
+//                       </button>
+//                     ))}
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </>
+//   );
+// };
+
+// export default SearchBar;
+
+// "use client";
+
+// import React, { useEffect, useState, useMemo } from "react";
+// import { Mic, Search, X } from "lucide-react";
+// import Image from "next/image";
+
+// import {
+//   useGetTourPackageQuery,
+//   useGetCategoriesQuery,
+// } from "../../../store/toursManagement/toursPackagesApi";
+
+// const SearchBar = ({ mobile = false }) => {
+//   const [isOpen, setIsOpen] = useState(false);
+//   const [selectedYear, setSelectedYear] = useState(2026);
+//   const [filters, setFilters] = useState([]);
+
+//   /* ✅ FETCH DATA */
+//   const { data: toursResponse } = useGetTourPackageQuery();
+//   const { data: categoriesResponse } = useGetCategoriesQuery({
+//     status: "Active",
+//   });
+
+//   const tours = toursResponse?.data || [];
+//   const categories = categoriesResponse?.data || [];
+
+//   /* ✅ UNIQUE CITY LIST */
+//   const popularCities = useMemo(() => {
+//     if (!tours.length) return [];
+
+//     const cities = tours.flatMap((tour) => [
+//       ...(tour.cityDetails?.map((c) => c.name) || []),
+//       ...(tour.states?.flatMap((s) => s.cities || []) || []),
+//     ]);
+
+//     return [...new Set(cities)];
+//   }, [tours]);
+
+//   /* ✅ PRICE BUCKETS */
+//   const priceRanges = useMemo(() => {
+//     if (!tours.length) return [];
+
+//     const prices = tours.map((t) => t.baseFullPackagePrice);
+
+//     const min = Math.min(...prices);
+//     const max = Math.max(...prices);
+
+//     const ranges = [];
+
+//     if (min < 35000) ranges.push("Below ₹35,000");
+//     if (max >= 35000) ranges.push("₹35,000 - ₹50,000");
+//     if (max >= 50000) ranges.push("₹50,000 - 1L");
+//     if (max >= 100000) ranges.push("1L - 2L");
+//     if (max >= 200000) ranges.push("2L - 3L");
+//     if (max >= 300000) ranges.push("3L & above");
+
+//     return ranges;
+//   }, [tours]);
+
+//   const months = [
+//     { label: "Jan" }, { label: "Feb" }, { label: "Mar" },
+//     { label: "Apr" }, { label: "May" }, { label: "Jun" },
+//     { label: "Jul" }, { label: "Aug" }, { label: "Sep" },
+//     { label: "Oct" }, { label: "Nov" }, { label: "Dec" },
+//   ];
+
+//   /* ✅ DESTINATIONS BASE */
+//   const destinationBase = useMemo(() => {
+//     return categories.map((cat) => ({
+//       name: cat.name,
+//       img: cat.image,
+//       id: cat._id,
+//     }));
+//   }, [categories]);
+
+//   /* ✅ FILTER ENGINE */
+//   const buildFilterLogic = (tour) => {
+//     return filters.every((filter) => {
+//       const price = tour.baseFullPackagePrice;
+
+//       /* ✅ PRICE FILTERS */
+//       if (filter === "Below ₹35,000") return price < 35000;
+//       if (filter === "₹35,000 - ₹50,000")
+//         return price >= 35000 && price <= 50000;
+//       if (filter === "₹50,000 - 1L")
+//         return price > 50000 && price <= 100000;
+//       if (filter === "1L - 2L")
+//         return price > 100000 && price <= 200000;
+//       if (filter === "2L - 3L")
+//         return price > 200000 && price <= 300000;
+//       if (filter === "3L & above") return price > 300000;
+
+//       /* ✅ MONTH FILTER */
+//       if (filter.includes(selectedYear.toString())) {
+//         const [monthLabel] = filter.split(" ");
+
+//         return tour.departures?.some((dep) => {
+//           const depDate = new Date(dep.date);
+//           return (
+//             depDate.getFullYear() === selectedYear &&
+//             depDate.toLocaleString("default", { month: "short" }) ===
+//             monthLabel
+//           );
+//         });
+//       }
+
+//       /* ✅ CITY FILTER (MULTI-SOURCE SAFE) */
+//       if (
+//         tour.cityDetails?.some((c) => c.name === filter) ||
+//         tour.states?.some((s) => s.cities?.includes(filter))
+//       )
+//         return true;
+
+//       return true;
+//     });
+//   };
+
+//   /* ✅ DESTINATION FILTERING (FULLY FIXED) */
+//   const filteredDestinations = useMemo(() => {
+//     return destinationBase
+//       .map((dest) => {
+//         const matchingTours = tours.filter((tour) => {
+//           /* ✅ CATEGORY MATCH (CRITICAL FIX) */
+//           if (
+//             tour.category !== dest.id &&
+//             tour.category?._id !== dest.id
+//           )
+//             return false;
+
+//           return buildFilterLogic(tour);
+//         });
+
+//         return {
+//           ...dest,
+//           tours: matchingTours.length,
+//           departures: matchingTours.reduce(
+//             (acc, t) => acc + (t.departures?.length || 0),
+//             0
+//           ),
+//         };
+//       })
+
+//       /* ✅ HIDE EMPTY DESTINATIONS */
+//       .filter((dest) => dest.tours > 0 || filters.length === 0);
+//   }, [destinationBase, tours, filters, selectedYear]);
+
+//   /* ✅ FILTER TOGGLE */
+//   const toggleFilter = (value) => {
+//     setFilters((prev) =>
+//       prev.includes(value)
+//         ? prev.filter((f) => f !== value)
+//         : [...prev, value]
+//     );
+//   };
+
+//   /* ✅ PLACEHOLDER ROTATION */
+//   const placeholders = [
+//     'Search "Gulmarg"',
+//     'Search "Bali"',
+//     'Search "Dubai"',
+//   ];
+
+//   const [index, setIndex] = useState(0);
+
+//   useEffect(() => {
+//     const interval = setInterval(
+//       () => setIndex((prev) => (prev + 1) % placeholders.length),
+//       3000
+//     );
+//     return () => clearInterval(interval);
+//   }, []);
+
+//   return (
+//     <>
+//       {/* SEARCH INPUT */}
+//       <div
+//         className={`${mobile
+//             ? "flex w-full"
+//             : "hidden md:flex flex-1 justify-center px-6"
+//           }`}
+//       >
+//         <div
+//           className="flex items-center w-full max-w-md bg-white/10 border border-gray-300 text-white rounded-full px-4 py-1.5 cursor-pointer"
+//           onClick={() => setIsOpen(true)}
+//         >
+//           <Search className="text-gray-400 w-3 h-3" />
+//           <input
+//             readOnly
+//             placeholder={placeholders[index]}
+//             className="flex-1 px-2 text-xs bg-transparent outline-none cursor-pointer"
+//           />
+//           <button className="text-blue-500 bg-gray-300 rounded-full p-2">
+//             <Mic className="w-3 h-3" />
+//           </button>
+//         </div>
+//       </div>
+
+//       {/* MODAL */}
+//       {isOpen && (
+//         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+//           <div className="w-full max-w-6xl bg-white text-black rounded-xl shadow-lg flex flex-col max-h-[90vh]">
+
+//             {/* HEADER */}
+//             <div className="p-4 border-b">
+//               <div className="flex items-center gap-3">
+//                 <div className="flex items-center flex-1 bg-gray-100 rounded-full px-4 py-2">
+//                   <Search className="text-gray-400 w-5 h-5" />
+//                   <input
+//                     className="flex-1 px-2 text-sm bg-transparent outline-none"
+//                     placeholder="Search destinations..."
+//                   />
+//                 </div>
+//                 <button
+//                   onClick={() => setIsOpen(false)}
+//                   className="bg-gray-200 p-2 rounded-full"
+//                 >
+//                   <X className="w-5 h-5" />
+//                 </button>
+//               </div>
+
+//               {/* ACTIVE FILTERS */}
+//               {filters.length > 0 && (
+//                 <div className="flex flex-wrap gap-2 mt-4">
+//                   {filters.map((f) => (
+//                     <span
+//                       key={f}
+//                       className="flex items-center gap-1 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs"
+//                     >
+//                       {f}
+//                       <X
+//                         className="w-3 h-3 cursor-pointer"
+//                         onClick={() => toggleFilter(f)}
+//                       />
+//                     </span>
+//                   ))}
+//                 </div>
+//               )}
+//             </div>
+
+//             <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+//               {/* LEFT PANEL */}
+//               <div className="space-y-6 bg-yellow-50 p-4 rounded-lg">
+
+//                 {/* CITY FILTER */}
+//                 {popularCities.length > 0 && (
+//                   <div>
+//                     <h3 className="font-bold text-sm border-b pb-2 mb-4">
+//                       EXPLORE BY CITY
+//                     </h3>
+//                     <div className="flex flex-wrap gap-2">
+//                       {popularCities.map((city) => (
+//                         <button
+//                           key={city}
+//                           onClick={() => toggleFilter(city)}
+//                           className={`px-4 py-1 rounded-full border text-xs ${filters.includes(city)
+//                               ? "bg-blue-900 text-white"
+//                               : "hover:bg-blue-100"
+//                             }`}
+//                         >
+//                           {city}
+//                         </button>
+//                       ))}
+//                     </div>
+//                   </div>
+//                 )}
+
+//                 {/* DESTINATIONS */}
+//                 <div>
+//                   <h3 className="font-bold text-sm border-b pb-2 mb-4">
+//                     HOT SELLING DESTINATIONS
+//                   </h3>
+
+//                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                     {filteredDestinations.map((d) => (
+//                       <div
+//                         key={d.name}
+//                         className={`flex items-center gap-3 p-2 border rounded-lg transition-opacity ${d.tours === 0 ? "opacity-50" : ""
+//                           }`}
+//                       >
+//                         <Image
+//                           src={d.img}
+//                           alt={d.name}
+//                           width={70}
+//                           height={50}
+//                           className="rounded-md object-cover"
+//                         />
+//                         <div>
+//                           <p className="font-semibold text-sm">{d.name}</p>
+//                           <p className="text-xs text-gray-500">
+//                             {d.tours} tours • {d.departures} departures
+//                           </p>
+//                         </div>
+//                       </div>
+//                     ))}
+//                   </div>
+//                 </div>
+//               </div>
+
+//               {/* RIGHT PANEL */}
+//               <div className="space-y-6">
+
+//                 {/* MONTH FILTER */}
+//                 <div>
+//                   <h3 className="font-bold text-sm border-b pb-2 mb-4">
+//                     When do you wish to travel?
+//                   </h3>
+
+//                   <div className="flex gap-4 mb-3">
+//                     {[2025, 2026].map((year) => (
+//                       <button
+//                         key={year}
+//                         onClick={() => setSelectedYear(year)}
+//                         className={`px-3 py-1 rounded-md text-sm ${selectedYear === year
+//                             ? "bg-blue-900 text-white"
+//                             : "bg-gray-100"
+//                           }`}
+//                       >
+//                         {year}
+//                       </button>
+//                     ))}
+//                   </div>
+
+//                   <div className="grid grid-cols-3 gap-2">
+//                     {months.map((m) => {
+//                       const filterKey = `${m.label} ${selectedYear}`;
+
+//                       return (
+//                         <button
+//                           key={m.label}
+//                           onClick={() => toggleFilter(filterKey)}
+//                           className={`px-3 py-2 rounded-lg border text-xs ${filters.includes(filterKey)
+//                               ? "bg-blue-900 text-white"
+//                               : "hover:bg-blue-100"
+//                             }`}
+//                         >
+//                           {m.label}
+//                         </button>
+//                       );
+//                     })}
+//                   </div>
+//                 </div>
+
+//                 {/* PRICE FILTER */}
+//                 {priceRanges.length > 0 && (
+//                   <div>
+//                     <h3 className="font-bold text-sm border-b pb-2 mb-4">
+//                       Popular Range
+//                     </h3>
+//                     <div className="flex flex-wrap gap-2">
+//                       {priceRanges.map((range) => (
+//                         <button
+//                           key={range}
+//                           onClick={() => toggleFilter(range)}
+//                           className={`px-4 py-1 rounded-full border text-xs ${filters.includes(range)
+//                               ? "bg-blue-900 text-white"
+//                               : "hover:bg-blue-100"
+//                             }`}
+//                         >
+//                           {range}
+//                         </button>
+//                       ))}
+//                     </div>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </>
+//   );
+// };
+
+// export default SearchBar;
+
 "use client";
+
 import React, { useEffect, useState, useMemo } from "react";
 import { Mic, Search, X } from "lucide-react";
 import Image from "next/image";
 
-// 1. Mock Master Data (In a real app, this comes from an API)
-const TOUR_DATA = [
-  { id: 1, name: "Swiss Alps Magic", region: "Europe", price: 250000, month: "Sep 2025", tags: ["Europe"] },
-  { id: 2, name: "Paris Getaway", region: "Europe", price: 150000, month: "Oct 2025", tags: ["Europe", "Seniors' Special"] },
-  { id: 3, name: "Thai Island Hopper", region: "South East Asia", price: 45000, month: "Nov 2025", tags: ["Phuket"] },
-  { id: 4, name: "Dubai Luxury", region: "Africa", price: 120000, month: "Dec 2025", tags: ["Dubai"] },
-  // ... add more mock items to test
-];
+import {
+  useGetTourPackageQuery,
+  useGetCategoriesQuery,
+} from "../../../store/toursManagement/toursPackagesApi";
 
 const SearchBar = ({ mobile = false }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("month");
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const [selectedYear, setSelectedYear] = useState(2026);
   const [filters, setFilters] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(""); // ✅ NEW: State for typed search
 
-  // Filter definitions
-  const bestSeasons = ["Europe", "Seniors' Special", "Phuket", "Women's Special", "New Zealand", "Dubai"];
+  /* ✅ FETCH DATA */
+  const { data: toursResponse } = useGetTourPackageQuery();
+  const tours = toursResponse?.data || [];
+  
+  /* ✅ DYNAMIC UNIQUE CITIES */
+  const popularCities = useMemo(() => {
+    if (!tours.length) return [];
+    const cities = tours.flatMap((tour) => [
+      ...(tour.cityDetails?.map((c) => c.name) || []),
+      ...(tour.states?.flatMap((s) => s.cities || []) || []),
+    ]);
+    return [...new Set(cities)].filter(Boolean);
+  }, [tours]);
+
   const priceRanges = ["Below ₹35,000", "₹35,000 - ₹50,000", "₹50,000 - 1L", "1L - 2L", "2L - 3L", "3L & above"];
-  const months = [
-    { label: "Jan", tours: 0 }, { label: "Feb", tours: 0 }, { label: "Mar", tours: 0 },
-    { label: "Apr", tours: 0 }, { label: "May", tours: 0 }, { label: "Jun", tours: 0 },
-    { label: "Jul", tours: 0 }, { label: "Aug", tours: 0 }, { label: "Sep", tours: 54 },
-    { label: "Oct", tours: 443 }, { label: "Nov", tours: 422 }, { label: "Dec", tours: 329 },
-  ];
+  const months = [{ label: "Jan" }, { label: "Feb" }, { label: "Mar" }, { label: "Apr" }, { label: "May" }, { label: "Jun" }, { label: "Jul" }, { label: "Aug" }, { label: "Sep" }, { label: "Oct" }, { label: "Nov" }, { label: "Dec" }];
 
-  const destinationBase = [
-    { name: "Europe", img: "/assets/img/search/1.avif" },
-    { name: "South East Asia", img: "/assets/img/search/2.avif" },
-    { name: "America", img: "/assets/img/search/3.avif" },
-    { name: "Australia New Zealand", img: "/assets/img/search/4.webp" },
-    { name: "Africa", img: "/assets/img/search/5.avif" },
-    { name: "Japan China Korea", img: "/assets/img/search/6.webp" },
-  ];
+  /* ✅ UPDATED FILTER LOGIC: WITH SAFETY CHECKS */
+  const buildFilterLogic = (tour, activeFilters, typedSearch) => {
+    const searchLower = typedSearch.toLowerCase().trim();
 
-  // 2. Dynamic Filtering Logic
-  const filteredDestinations = useMemo(() => {
-    return destinationBase.map((dest) => {
-      const matchingTours = TOUR_DATA.filter((tour) => {
-        // Must match the region
-        if (tour.region !== dest.name) return false;
+    // --- 1. Typed Search Logic with Null Safety ---
+    const matchesTypedSearch = !searchLower || (
+      // Check Title
+      (tour.title || "").toLowerCase().includes(searchLower) ||
+      
+      // Check Cities in cityDetails
+      tour.cityDetails?.some(c => (c.name || "").toLowerCase().includes(searchLower)) ||
+      
+      // Check States and Cities within States (Added Safety Here)
+      tour.states?.some(s => 
+        (s.state || "").toLowerCase().includes(searchLower) || 
+        s.cities?.some(city => (city || "").toLowerCase().includes(searchLower))
+      ) ||
+      
+      // Check Price
+      (tour.baseFullPackagePrice || "").toString().includes(searchLower)
+    );
 
-        // Apply active filters (Best Season, Months, Price)
-        return filters.every((filter) => {
-          // If filter is a month (e.g., "Sep 2025")
-          if (filter.includes(selectedYear.toString())) {
-            return tour.month === filter;
-          }
-          // If filter is a Best Season tag
-          if (bestSeasons.includes(filter)) {
-            return tour.tags.includes(filter);
-          }
-          // If filter is a Price Range
-          if (priceRanges.includes(filter)) {
-            const p = tour.price;
-            if (filter === "Below ₹35,000") return p < 35000;
-            if (filter === "₹35,000 - ₹50,000") return p >= 35000 && p <= 50000;
-            if (filter === "₹50,000 - 1L") return p > 50000 && p <= 100000;
-            if (filter === "1L - 2L") return p > 100000 && p <= 200000;
-            if (filter === "2L - 3L") return p > 200000 && p <= 300000;
-            if (filter === "3L & above") return p > 300000;
-          }
-          return true;
-        });
-      });
+    if (!matchesTypedSearch) return false;
 
-      return {
-        ...dest,
-        tours: matchingTours.length,
-        departures: Math.floor(matchingTours.length * 1.2), // Mock logic for departures
-      };
+    // --- 2. Button-based Filter Logic ---
+    if (activeFilters.length === 0) return true;
+
+    const priceF = activeFilters.filter(f => f.includes('₹') || f.includes('L'));
+    const monthF = activeFilters.filter(f => f.includes("2025") || f.includes("2026"));
+    const cityF = activeFilters.filter(f => popularCities.includes(f));
+
+    const matchesPrice = priceF.length === 0 || priceF.some(f => {
+      const price = tour.baseFullPackagePrice;
+      if (f === "Below ₹35,000") return price < 35000;
+      if (f === "₹35,000 - ₹50,000") return price >= 35000 && price <= 50000;
+      if (f === "₹50,000 - 1L") return price > 50000 && price <= 100000;
+      if (f === "1L - 2L") return price > 100000 && price <= 200000;
+      if (f === "2L - 3L") return price > 200000 && price <= 300000;
+      if (f === "3L & above") return price > 300000;
+      return false;
     });
-  }, [filters, selectedYear]);
+
+    const matchesMonth = monthF.length === 0 || tour.departures?.some(dep => {
+      const d = new Date(dep.date);
+      const label = `${d.toLocaleString("default", { month: "short" })} ${d.getFullYear()}`;
+      return monthF.includes(label);
+    });
+
+    const matchesCity = cityF.length === 0 || (
+      tour.cityDetails?.some(c => cityF.includes(c.name)) ||
+      tour.states?.some(s => s.cities?.some(city => cityF.includes(city)))
+    );
+
+    return matchesPrice && matchesMonth && matchesCity;
+  };
+
+  /* ✅ DYNAMIC FILTERING */
+  const filteredTours = useMemo(() => {
+    return tours.filter((tour) => buildFilterLogic(tour, filters, searchTerm));
+  }, [tours, filters, searchTerm, selectedYear]);
 
   const toggleFilter = (value) => {
     setFilters((prev) =>
@@ -433,38 +1046,42 @@ const SearchBar = ({ mobile = false }) => {
     );
   };
 
-  const placeholders = ['Search "Gulmarg"', 'Search "Europe"', 'Search "Dubai"'];
+  const placeholders = ['Search "Gulmarg"', 'Search "Bali"', 'Search "Dubai"'];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => setIndex((prev) => (prev + 1) % placeholders.length), 3000);
+    const interval = setInterval(() => setIndex((p) => (p + 1) % placeholders.length), 3000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <>
-      {/* Search Input Trigger */}
+      {/* TRIGGER BAR */}
       <div className={`${mobile ? "flex w-full" : "hidden md:flex flex-1 justify-center px-6"}`}>
-        <div
-          className="flex items-center w-full max-w-md bg-white/10 border border-gray-300 text-white rounded-full px-4 py-1.5 cursor-pointer"
-          onClick={() => setIsOpen(true)}
-        >
+        <div className="flex items-center w-full max-w-md bg-white/10 border border-gray-300 text-white rounded-full px-4 py-1.5 cursor-pointer" onClick={() => setIsOpen(true)}>
           <Search className="text-gray-400 w-3 h-3" />
           <input readOnly placeholder={placeholders[index]} className="flex-1 px-2 text-xs bg-transparent outline-none cursor-pointer" />
           <button className="text-blue-500 bg-gray-300 rounded-full p-2"><Mic className="w-3 h-3" /></button>
         </div>
       </div>
 
-      {/* Modal */}
+      {/* MODAL */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-6xl bg-white text-black rounded-xl shadow-lg flex flex-col max-h-[90vh]">
-            {/* Header & Pills */}
+            
             <div className="p-4 border-b">
               <div className="flex items-center gap-3">
                 <div className="flex items-center flex-1 bg-gray-100 rounded-full px-4 py-2">
                   <Search className="text-gray-400 w-5 h-5" />
-                  <input className="flex-1 px-2 text-sm bg-transparent outline-none" placeholder="Search destinations..." />
+                  {/* ✅ SEARCH INPUT: Now functional */}
+                  <input 
+                    className="flex-1 px-2 text-sm bg-transparent outline-none" 
+                    placeholder="Type city, package title, or price..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {searchTerm && <X className="w-4 h-4 text-gray-400 cursor-pointer" onClick={() => setSearchTerm("")} />}
                 </div>
                 <button onClick={() => setIsOpen(false)} className="bg-gray-200 p-2 rounded-full"><X className="w-5 h-5" /></button>
               </div>
@@ -481,50 +1098,53 @@ const SearchBar = ({ mobile = false }) => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* LEFT SIDE: Dynamic Destinations */}
+              {/* LEFT PANEL */}
               <div className="space-y-6 bg-yellow-50 p-4 rounded-lg">
                 <div>
-                  <h3 className="font-bold text-sm border-b pb-2 mb-4">BEST SEASON TOURS</h3>
+                  <h3 className="font-bold text-sm border-b pb-2 mb-4">EXPLORE BY CITY</h3>
                   <div className="flex flex-wrap gap-2">
-                    {bestSeasons.map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => toggleFilter(item)}
-                        className={`px-4 py-1 rounded-full border text-xs ${filters.includes(item) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}
-                      >
-                        {item}
+                    {popularCities.map((city) => (
+                      <button key={city} onClick={() => toggleFilter(city)} className={`px-4 py-1 rounded-full border text-xs ${filters.includes(city) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}>
+                        {city}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-sm border-b pb-2 mb-4">HOT SELLING DESTINATIONS</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {filteredDestinations.map((d) => (
-                      <div key={d.name} className={`flex items-center gap-3 p-2 border rounded-lg hover:shadow cursor-pointer transition-opacity ${d.tours === 0 ? 'opacity-50' : 'opacity-100'}`}>
-                        <Image src={d.img} alt={d.name} width={70} height={50} className="rounded-md object-cover" />
-                        <div>
-                          <p className="font-semibold text-sm">{d.name}</p>
-                          <p className="text-xs text-gray-500">{d.tours} tours • {d.departures} departures</p>
+                  <h3 className="font-bold text-sm border-b pb-2 mb-4 uppercase">Matches Found ({filteredTours.length})</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {filteredTours.length > 0 ? (
+                      filteredTours.slice(0, 10).map((tour) => (
+                        <div key={tour._id} className="flex items-center gap-3 p-2 border bg-white rounded-lg hover:shadow-sm cursor-pointer transition-all">
+                          <Image 
+                            src={tour.galleryImages?.[0] || "/placeholder.jpg"} 
+                            alt={tour.title} 
+                            width={80} 
+                            height={60} 
+                            className="rounded-md object-cover h-[60px] w-[80px]" 
+                          />
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm line-clamp-1">{tour.title}</p>
+                            <p className="text-[10px] text-gray-500 uppercase">{tour.days} Days • {tour.nights} Nights</p>
+                            <p className="text-xs text-blue-600 font-bold">₹{tour.baseFullPackagePrice.toLocaleString()}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-xs italic p-4 text-center">No matching tour packages found for "{searchTerm}"...</p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* RIGHT SIDE: Filters */}
+              {/* RIGHT PANEL */}
               <div className="space-y-6">
                 <div>
                   <h3 className="font-bold text-sm border-b pb-2 mb-4">When do you wish to travel?</h3>
                   <div className="flex gap-4 mb-3">
                     {[2025, 2026].map((year) => (
-                      <button
-                        key={year}
-                        onClick={() => setSelectedYear(year)}
-                        className={`px-3 py-1 rounded-md text-sm ${selectedYear === year ? "bg-blue-900 text-white" : "bg-gray-100"}`}
-                      >
+                      <button key={year} onClick={() => setSelectedYear(year)} className={`px-3 py-1 rounded-md text-sm ${selectedYear === year ? "bg-blue-900 text-white" : "bg-gray-100"}`}>
                         {year}
                       </button>
                     ))}
@@ -533,11 +1153,7 @@ const SearchBar = ({ mobile = false }) => {
                     {months.map((m) => {
                       const filterKey = `${m.label} ${selectedYear}`;
                       return (
-                        <button
-                          key={m.label}
-                          onClick={() => toggleFilter(filterKey)}
-                          className={`px-3 py-2 rounded-lg border text-xs text-center ${filters.includes(filterKey) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}
-                        >
+                        <button key={m.label} onClick={() => toggleFilter(filterKey)} className={`px-3 py-2 rounded-lg border text-xs ${filters.includes(filterKey) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}>
                           {m.label}
                         </button>
                       );
@@ -549,11 +1165,7 @@ const SearchBar = ({ mobile = false }) => {
                   <h3 className="font-bold text-sm border-b pb-2 mb-4">Popular Range</h3>
                   <div className="flex flex-wrap gap-2">
                     {priceRanges.map((range) => (
-                      <button
-                        key={range}
-                        onClick={() => toggleFilter(range)}
-                        className={`px-4 py-1 rounded-full border text-xs ${filters.includes(range) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}
-                      >
+                      <button key={range} onClick={() => toggleFilter(range)} className={`px-4 py-1 rounded-full border text-xs ${filters.includes(range) ? "bg-blue-900 text-white" : "hover:bg-blue-100"}`}>
                         {range}
                       </button>
                     ))}
@@ -569,6 +1181,7 @@ const SearchBar = ({ mobile = false }) => {
 };
 
 export default SearchBar;
+
 
 
 

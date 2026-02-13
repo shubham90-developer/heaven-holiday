@@ -5,6 +5,8 @@ import { Phone, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useGetContactDetailsQuery } from "store/aboutUsApi/contactApi";
 import { useCreateEnquiryMutation } from "store/enquiryApi/enquiryApi";
+import { toast } from "react-hot-toast"; // ✅ ADD THIS
+
 const EnquiryNow = () => {
   const {
     data: contactDetails,
@@ -32,7 +34,7 @@ const EnquiryNow = () => {
     e.preventDefault();
     try {
       await createEnquiry(formData).unwrap();
-      alert("Enquiry submitted successfully!");
+      toast.success("Enquiry submitted successfully!");
       setFormData({
         name: "",
         mono: "",
@@ -43,7 +45,7 @@ const EnquiryNow = () => {
       });
     } catch (err) {
       console.error("Failed to submit enquiry:", err);
-      alert("Failed to submit enquiry. Please try again.");
+      toast.error("Failed to submit enquiry. Please try again.");
     }
   };
 
