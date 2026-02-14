@@ -369,16 +369,6 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 
 import { Button, Modal, Form, Table, Row, Col, Alert } from "react-bootstrap";
 
-/* ---------- TYPES ---------- */
-type BrandInput = {
-  name: string;
-  industry: string;
-};
-
-type IndustryInput = {
-  image: File | null;
-};
-
 const Page = () => {
   const { data, isLoading, isError } = useGetAllBrandsSectionsQuery();
 
@@ -395,9 +385,12 @@ const Page = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [heading, setHeading] = useState("");
-  const [brands, setBrands] = useState<BrandInput[]>([]);
-  const [industries, setIndustries] = useState<IndustryInput[]>([]);
+  // ✅ GLOBAL HEADING
+ const [heading, setHeading] = useState("");
+
+  const [brandName, setBrandName] = useState("");
+  const [industryName, setIndustryName] = useState("");
+  const [industryImage, setIndustryImage] = useState<File | null>(null);
 
   const [alert, setAlert] = useState({
     show: false,
@@ -407,9 +400,9 @@ const Page = () => {
 
   /* ---------- HELPERS ---------- */
   const resetForm = () => {
-    setHeading("");
-    setBrands([]);
-    setIndustries([]);
+    setBrandName("");
+    setIndustryName("");
+    setIndustryImage(null);
     setEditingId(null);
     setIsEditMode(false);
   };
@@ -422,9 +415,13 @@ const Page = () => {
   const openEditModal = (section: any) => {
     setIsEditMode(true);
     setEditingId(section._id);
-    setHeading(section.heading);
-    setBrands(section.brands || []);
-    setIndustries([]); // images must be re-uploaded
+
+    const firstBrand = section.brands?.[0];
+
+    setBrandName(firstBrand?.name || "");
+    setIndustryName(firstBrand?.industry || "");
+    setIndustryImage(null);
+
     setShowModal(true);
   };
 
@@ -435,15 +432,21 @@ const Page = () => {
     try {
       const formData = new FormData();
 
-      formData.append("heading", heading);
+      formData.append("heading", heading); // ✅ GLOBAL
       formData.append("isActive", "true");
+
+      const brands = [
+        {
+          name: brandName,
+          industry: industryName,
+        },
+      ];
+
       formData.append("brands", JSON.stringify(brands));
 
-      industries.forEach((industry) => {
-        if (industry.image) {
-          formData.append("industries", industry.image);
-        }
-      });
+      if (industryImage) {
+        formData.append("industries", industryImage);
+      }
 
       if (isEditMode && editingId) {
         await updateBrandsSection({
@@ -462,7 +465,9 @@ const Page = () => {
 
       setShowModal(false);
       resetForm();
-    } catch {
+    } catch (error) {
+      console.log("SAVE ERROR:", error);
+
       setAlert({
         show: true,
         message: "Something went wrong",
@@ -490,7 +495,6 @@ const Page = () => {
     return <Alert variant="danger">Failed to load data</Alert>;
   }
 
-  /* ---------- UI ---------- */
   return (
     <>
       <PageTitle title="Brands Management" subTitle="Content Management" />
@@ -506,6 +510,17 @@ const Page = () => {
       )}
 
       <ComponentContainerCard title="Brands Sections">
+
+        {/* ✅ HEADING OUTSIDE MODAL */}
+        <Form.Group className="mb-3">
+          <Form.Label>Section Heading</Form.Label>
+          <Form.Control
+            value={heading}
+            onChange={(e) => setHeading(e.target.value)}
+            placeholder="Enter headline / title"
+          />
+        </Form.Group>
+
         <Button onClick={openCreateModal} className="mb-3">
           <IconifyIcon icon="tabler:plus" className="me-1" />
           Add Section
@@ -515,20 +530,19 @@ const Page = () => {
           <thead>
             <tr>
               <th>#</th>
-              <th>Heading</th>
+              {/* <th>Heading</th> */}
               <th>Brand</th>
               <th>Industry</th>
               <th />
             </tr>
           </thead>
+
           <tbody>
             {sections.map((item: any, index: number) => (
               <tr key={item._id}>
                 <td>{index + 1}</td>
+                {/* <td>{item.heading}</td> */}
 
-                <td>{item.heading}</td>
-
-                {/* BRANDS NAMES */}
                 <td>
                   {item.brands?.length > 0 ? (
                     <ul className="mb-0 ps-3">
@@ -541,7 +555,6 @@ const Page = () => {
                   )}
                 </td>
 
-                {/* INDUSTRY IMAGES */}
                 <td>
                   {item.industries?.length > 0 ? (
                     <div className="d-flex gap-2 flex-wrap">
@@ -597,114 +610,48 @@ const Page = () => {
 
         <Modal.Body>
           <Form onSubmit={handleSubmit}>
+
+            <h6>Brand Details</h6>
+
+            <Row className="mb-3">
+              <Col>
+                <Form.Control
+                  placeholder="Brand Name"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  required
+                />
+              </Col>
+
+              <Col>
+                <Form.Control
+                  placeholder="Industry Name"
+                  value={industryName}
+                  onChange={(e) => setIndustryName(e.target.value)}
+                  required
+                />
+              </Col>
+            </Row>
+
             <Form.Group className="mb-3">
-              <Form.Label>Heading</Form.Label>
+              <Form.Label>Industry Image</Form.Label>
               <Form.Control
-                value={heading}
-                onChange={(e) => setHeading(e.target.value)}
-                required
+                type="file"
+                accept="image/*"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setIndustryImage(file);
+                }}
+                required={!isEditMode}
               />
             </Form.Group>
-
-            <hr />
-            <h6>Brands</h6>
-
-            {brands.map((brand, index) => (
-              <Row key={index} className="mb-2">
-                <Col>
-                  <Form.Control
-                    placeholder="Brand Name"
-                    value={brand.name}
-                    onChange={(e) => {
-                      const updated = [...brands];
-                      updated[index].name = e.target.value;
-                      setBrands(updated);
-                    }}
-                    required
-                  />
-                </Col>
-                <Col>
-                  <Form.Control
-                    placeholder="Industry"
-                    value={brand.industry}
-                    onChange={(e) => {
-                      const updated = [...brands];
-                      updated[index].industry = e.target.value;
-                      setBrands(updated);
-                    }}
-                    required
-                  />
-                </Col>
-                <Col md="auto">
-                  <Button
-                    size="sm"
-                    variant="outline-danger"
-                    onClick={() =>
-                      setBrands(brands.filter((_, i) => i !== index))
-                    }
-                  >
-                    <IconifyIcon icon="tabler:trash" />
-                  </Button>
-                </Col>
-              </Row>
-            ))}
-
-            <Button
-              size="sm"
-              variant="outline-primary"
-              onClick={() =>
-                setBrands([...brands, { name: "", industry: "" }])
-              }
-            >
-              Add Brand
-            </Button>
-
-            <hr />
-            <h6>Industry Images</h6>
-
-            {industries.map((industry, index) => (
-              <Row key={index} className="mb-2">
-                <Col>
-                  <Form.Control
-                    type="file"
-                    accept="image/*"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-
-                      const updated = [...industries];
-                      updated[index].image = file;
-                      setIndustries(updated);
-                    }}
-                    required
-                  />
-                </Col>
-                <Col md="auto">
-                  <Button
-                    size="sm"
-                    variant="outline-danger"
-                    onClick={() =>
-                      setIndustries(industries.filter((_, i) => i !== index))
-                    }
-                  >
-                    <IconifyIcon icon="tabler:trash" />
-                  </Button>
-                </Col>
-              </Row>
-            ))}
-
-            <Button
-              size="sm"
-              variant="outline-primary"
-              onClick={() => setIndustries([...industries, { image: null }])}
-            >
-              Add Image
-            </Button>
 
             <div className="d-flex justify-content-end gap-2 mt-4">
               <Button variant="secondary" onClick={() => setShowModal(false)}>
                 Cancel
               </Button>
+
               <Button type="submit" disabled={isCreating || isUpdating}>
                 {(isCreating || isUpdating) && (
                   <span className="spinner-border spinner-border-sm me-2" />
@@ -720,3 +667,5 @@ const Page = () => {
 };
 
 export default Page;
+
+

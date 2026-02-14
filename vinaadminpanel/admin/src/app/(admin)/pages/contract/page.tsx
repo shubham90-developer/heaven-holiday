@@ -12,7 +12,6 @@ import {
 } from "@/app/redux/api/contract/contractApi";
 import Link from "next/link";
 
-
 // ✅ CONTRACT TYPE
 interface IContract {
     _id: string;
@@ -30,11 +29,14 @@ const ContractsPage = () => {
     const [deleteContract] = useDeleteContractMutation();
     const [updateStatus] = useUpdateContractStatusMutation();
 
-    // ✅ PROPERLY TYPED
     const contracts: IContract[] = data?.data || [];
 
     const [showModal, setShowModal] = useState<boolean>(false);
     const [selectedContract, setSelectedContract] = useState<IContract | null>(null);
+
+    // ✅ DELETE MODAL STATE
+    const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+    const [contractToDelete, setContractToDelete] = useState<string | null>(null);
 
     const [alert, setAlert] = useState<{
         show: boolean;
@@ -46,7 +48,6 @@ const ContractsPage = () => {
         variant: "success",
     });
 
-    // ✅ TYPED FUNCTION
     const showAlert = (
         message: string,
         variant: "success" | "danger"
@@ -68,14 +69,24 @@ const ContractsPage = () => {
         setShowModal(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Delete this contact message?")) return;
+    // ✅ OPEN DELETE MODAL
+    const handleDeleteClick = (id: string) => {
+        setContractToDelete(id);
+        setShowDeleteModal(true);
+    };
+
+    // ✅ CONFIRM DELETE
+    const confirmDelete = async () => {
+        if (!contractToDelete) return;
 
         try {
-            await deleteContract(id).unwrap();
+            await deleteContract(contractToDelete).unwrap();
             showAlert("Contact deleted successfully", "success");
         } catch {
             showAlert("Delete failed", "danger");
+        } finally {
+            setShowDeleteModal(false);
+            setContractToDelete(null);
         }
     };
 
@@ -142,7 +153,7 @@ const ContractsPage = () => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        contracts.map((contract: IContract, index: number) => (
+                                        contracts.map((contract, index) => (
                                             <tr key={contract._id}>
                                                 <td>{index + 1}</td>
                                                 <td>{contract.name}</td>
@@ -178,7 +189,7 @@ const ContractsPage = () => {
                                                         href="#"
                                                         onClick={(e) => {
                                                             e.preventDefault();
-                                                            handleDelete(contract._id);
+                                                            handleDeleteClick(contract._id);
                                                         }}
                                                     >
                                                         <IconifyIcon icon="tabler:trash" />
@@ -194,6 +205,7 @@ const ContractsPage = () => {
                 </Col>
             </Row>
 
+            {/* ✅ VIEW MODAL */}
             <Modal show={showModal} onHide={handleCloseModal} centered size="lg">
                 <Modal.Header closeButton>
                     <Modal.Title>Contact Details</Modal.Title>
@@ -237,10 +249,42 @@ const ContractsPage = () => {
                     )}
                 </Modal.Body>
             </Modal>
+
+            {/* ✅ DELETE CONFIRMATION MODAL */}
+            <Modal
+                show={showDeleteModal}
+                onHide={() => setShowDeleteModal(false)}
+                centered
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title>Confirm Delete</Modal.Title>
+                </Modal.Header>
+
+                <Modal.Body>
+                    Are you sure you want to delete this contact message?
+                </Modal.Body>
+
+                <Modal.Footer>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setShowDeleteModal(false)}
+                    >
+                        Cancel
+                    </Button>
+
+                    <Button
+                        variant="danger"
+                        onClick={confirmDelete}
+                    >
+                        Delete
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </>
     );
 };
 
 export default ContractsPage;
+
 
 
