@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from "express";
 import mongoose from 'mongoose';
 import { BrandsSection } from './brandsModel';
 import {
@@ -7,7 +7,11 @@ import {
 } from './brandsValidation';
 
 
-export const getBrandsSections = async (req: Request, res: Response) => {
+export const getBrandsSections = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const data = await BrandsSection.find({ isActive: true });
 
@@ -16,25 +20,26 @@ export const getBrandsSections = async (req: Request, res: Response) => {
       data,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Something went wrong',
-    });
+    next(error);
   }
 };
 
-export const getBrandsSectionById = async (req: Request, res: Response) => {
+export const getBrandsSectionById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid ID' });
+      return res.status(400).json({ message: "Invalid ID" });
     }
 
     const data = await BrandsSection.findById(id);
 
     if (!data) {
-      return res.status(404).json({ message: 'Not found' });
+      return res.status(404).json({ message: "Not found" });
     }
 
     return res.status(200).json({
@@ -42,16 +47,16 @@ export const getBrandsSectionById = async (req: Request, res: Response) => {
       data,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Something went wrong',
-    });
+    next(error);
   }
 };
 
-export const createBrandsSection = async (req: Request, res: Response) => {
+export const createBrandsSection = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    /* ---------- EXTRACT DATA ---------- */
     const { heading, isActive } = req.body;
 
     const brands = req.body.brands
@@ -60,11 +65,11 @@ export const createBrandsSection = async (req: Request, res: Response) => {
 
     const files = req.files as Express.Multer.File[];
 
-    const industries = files?.map((file) => ({
-      image: file.path, // store path
-    })) || [];
+    const industries =
+      files?.map((file) => ({
+        image: file.path,
+      })) || [];
 
-    /* ---------- ZOD VALIDATION ---------- */
     const payload = createBrandsSectionSchema.parse({
       heading,
       brands,
@@ -72,7 +77,6 @@ export const createBrandsSection = async (req: Request, res: Response) => {
       isActive: isActive === "true",
     });
 
-    /* ---------- SAVE ---------- */
     const created = await BrandsSection.create(payload);
 
     return res.status(201).json({
@@ -87,15 +91,15 @@ export const createBrandsSection = async (req: Request, res: Response) => {
       });
     }
 
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const updateBrandsSection = async (req: Request, res: Response) => {
+export const updateBrandsSection = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
 
@@ -103,7 +107,6 @@ export const updateBrandsSection = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid ID" });
     }
 
-    /* ---------- EXTRACT DATA ---------- */
     const { heading, isActive } = req.body;
 
     const brands = req.body.brands
@@ -116,7 +119,6 @@ export const updateBrandsSection = async (req: Request, res: Response) => {
       ? files.map((file) => ({ image: file.path }))
       : undefined;
 
-    /* ---------- ZOD VALIDATION ---------- */
     const payload = createBrandsSectionSchema.partial().parse({
       heading,
       brands,
@@ -124,12 +126,11 @@ export const updateBrandsSection = async (req: Request, res: Response) => {
       isActive: isActive === "true",
     });
 
-    /* ---------- UPDATE ---------- */
     const updated = await BrandsSection.findByIdAndUpdate(
       id,
       {
         ...payload,
-        ...(industries && { industries }), // only overwrite if new images
+        ...(industries && { industries }),
       },
       { new: true, runValidators: true }
     );
@@ -150,43 +151,41 @@ export const updateBrandsSection = async (req: Request, res: Response) => {
       });
     }
 
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Something went wrong",
-    });
+    next(error);
   }
 };
 
-export const deleteBrandsSection = async (req: Request, res: Response) => {
+export const deleteBrandsSection = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid ID' });
+      return res.status(400).json({ message: "Invalid ID" });
     }
 
     const deleted = await BrandsSection.findByIdAndUpdate(
       id,
       { isActive: false },
-      { new: true },
+      { new: true }
     );
 
     if (!deleted) {
-      return res.status(404).json({ message: 'Not found' });
+      return res.status(404).json({ message: "Not found" });
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Deleted successfully',
+      message: "Deleted successfully",
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Something went wrong',
-    });
+    next(error);
   }
 };
+
 
 
 
