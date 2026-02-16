@@ -386,7 +386,7 @@ const Page = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // ✅ GLOBAL HEADING
- const [heading, setHeading] = useState("");
+  const [heading, setHeading] = useState("");
 
   const [brandName, setBrandName] = useState("");
   const [industryName, setIndustryName] = useState("");
@@ -526,13 +526,14 @@ const Page = () => {
           Add Section
         </Button>
 
-        <Table>
+       <table className="table table-striped-columns mb-0">
           <thead>
             <tr>
               <th>#</th>
               {/* <th>Heading</th> */}
               <th>Brand</th>
-              <th>Industry</th>
+              <th>Industry Name</th>
+              <th>Industry Image</th>
               <th />
             </tr>
           </thead>
@@ -547,11 +548,23 @@ const Page = () => {
                   {item.brands?.length > 0 ? (
                     <ul className="mb-0 ps-3">
                       {item.brands.map((brand: any, i: number) => (
-                        <li key={i}>{brand.name}</li>
+                        <p key={i}>{brand.name}</p>
                       ))}
                     </ul>
                   ) : (
                     <span className="text-muted">No brands</span>
+                  )}
+                </td>
+
+                <td>
+                  {item.brands?.length > 0 ? (
+                    <div className="d-flex gap-2 flex-wrap">
+                      {item.brands.map((brand: any, i: number) => (
+                        <p key={i}>{brand.industry}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-muted">No Industry names found</span>
                   )}
                 </td>
 
@@ -597,7 +610,7 @@ const Page = () => {
               </tr>
             ))}
           </tbody>
-        </Table>
+        </table>
       </ComponentContainerCard>
 
       {/* ---------- MODAL ---------- */}
