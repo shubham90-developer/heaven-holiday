@@ -8,7 +8,7 @@ export const corporateBrandsApi = createApi({
   tagTypes: ["Brands"],
   endpoints: (builder) => ({
     /* ================= CREATE ================= */
-    createBrandsSection: builder.mutation({
+    createBrandsSection: builder.mutation<any, FormData>({
       query: (formData) => ({
         url: "/",
         method: "POST",
@@ -18,7 +18,7 @@ export const corporateBrandsApi = createApi({
     }),
 
     /* ================= GET ALL ================= */
-    getAllBrandsSections: builder.query({
+    getAllBrandsSections: builder.query<any, void>({
       query: () => ({
         url: "/",
         method: "GET",
@@ -26,17 +26,20 @@ export const corporateBrandsApi = createApi({
       providesTags: (result) =>
         result?.data
           ? [
-              ...result.data.map((item: any) => ({
-                type: "Brands" as const,
-                id: item._id,
-              })),
-              { type: "Brands", id: "LIST" },
-            ]
+            ...result.data.map((item: any) => ({
+              type: "Brands" as const,
+              id: item._id,
+            })),
+            { type: "Brands", id: "LIST" },
+          ]
           : [{ type: "Brands", id: "LIST" }],
     }),
 
     /* ================= UPDATE ================= */
-    updateBrandsSection: builder.mutation({
+    updateBrandsSection: builder.mutation<
+      any,
+      { id: string; formData: FormData }
+    >({
       query: ({ id, formData }) => ({
         url: `/${id}`,
         method: "PUT",
@@ -49,7 +52,7 @@ export const corporateBrandsApi = createApi({
     }),
 
     /* ================= DELETE ================= */
-    deleteBrandsSection: builder.mutation({
+    deleteBrandsSection: builder.mutation<any, string>({
       query: (id) => ({
         url: `/${id}`,
         method: "DELETE",

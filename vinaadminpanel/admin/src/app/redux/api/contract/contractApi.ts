@@ -12,14 +12,14 @@ export const contractApi = createApi({
 
   endpoints: (builder) => ({
     /* ✅ GET ALL CONTRACTS */
-    getAllContracts: builder.query({
+    getAllContracts: builder.query<any, void>({
       query: () => "/",
 
       providesTags: ["Contracts"],
     }),
 
     /* ✅ DELETE CONTRACT */
-    deleteContract: builder.mutation({
+    deleteContract: builder.mutation<void, string>({
       query: (id) => ({
         url: `/${id}`,
         method: "DELETE",
@@ -29,7 +29,10 @@ export const contractApi = createApi({
     }),
 
     /* ✅ UPDATE STATUS */
-    updateContractStatus: builder.mutation({
+    updateContractStatus: builder.mutation<
+      void,
+      { id: string; status: string }
+    >({
       query: ({ id, status }) => ({
         url: `/${id}/status`,
         method: "PATCH",
